@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Camera, X, Check, Settings, Play, Pause, TrendingUp, Clock, ChevronLeft, Volume2, VolumeX, Bell, Sparkles } from 'lucide-react';
 
 const STRETCHES = [
-  { id: 1, name: "Overhead Reach", description: "Stand up, reach both arms overhead, interlace fingers, and stretch upward", Reps: 15, fallbackEmoji: "🙆", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Arm_stretch/Arm+stretch.mp4" },
-  { id: 2, name: "Shoulder Rolls", description: "Stand up, roll shoulders backward 5 times, then forward 5 times", Reps: 15, fallbackEmoji: "💪", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Shoulder_shrugs/video_media_01KG8B226QGMN86GP43EKEJMNH.mp4" },
-  { id: 3, name: "Torso Twist", description: "Stand with feet shoulder-width apart, twist torso left and right alternating", Reps: 15, fallbackEmoji: "🔄", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Torso_twist/Torso+twist.mp4" },
-  { id: 4, name: "Arm Circles", description: "Stand up, extend arms to sides, make small circles forward then backward", Reps: 20, fallbackEmoji: "⭕", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/video_media_01KG8B226QGMN86GP43EKEJMNH.mp4" },
-  { id: 5, name: "Side Bend", description: "Stand tall, reach right arm overhead and bend left, then switch sides", Reps: 15, fallbackEmoji: "🤸", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Side_bend/side+bend.mp4" },
-  { id: 6, name: "Neck Rolls", description: "Gently roll head in a circle, 3 times each direction", Reps: 15, fallbackEmoji: "🤸", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/neck_rolls/Animate_this_manequin_202601312324_s2zxr.mp4" }
+  { id: 1, name: "Overhead Reach", description: "Stand up, reach both arms overhead, interlace fingers, and stretch upward", duration: 15, fallbackEmoji: "🙆", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Arm_stretch/Arm+stretch.mp4" },
+  { id: 2, name: "Shoulder Rolls", description: "Stand up, roll shoulders backward 5 times, then forward 5 times", duration: 15, fallbackEmoji: "💪", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Shoulder_shrugs/video_media_01KG8B226QGMN86GP43EKEJMNH.mp4" },
+  { id: 3, name: "Torso Twist", description: "Stand with feet shoulder-width apart, twist torso left and right alternating", duration: 15, fallbackEmoji: "🔄", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Torso_twist/Torso+twist.mp4" },
+  { id: 4, name: "Arm Circles", description: "Stand up, extend arms to sides, make small circles forward then backward", duration: 20, fallbackEmoji: "⭕", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/video_media_01KG8B226QGMN86GP43EKEJMNH.mp4" },
+  { id: 5, name: "Side Bend", description: "Stand tall, reach right arm overhead and bend left, then switch sides", duration: 15, fallbackEmoji: "🤸", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Side_bend/side+bend.mp4" },
+  { id: 6, name: "Neck Rolls", description: "Gently roll head in a circle, 3 times each direction", duration: 15, fallbackEmoji: "🤸", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/neck_rolls/Animate_this_manequin_202601312324_s2zxr.mp4" }
 ];
 
 const Btn=({children,onClick,primary,icon:I})=><button onClick={onClick} className={`w-full py-4 font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${primary?'bg-black text-white border-2 border-black hover:bg-white hover:text-black':'border-2 border-black bg-white hover:bg-neutral-100'}`}>{I&&<I className="w-5 h-5" strokeWidth={2}/>}{children}</button>;
@@ -153,7 +153,7 @@ export default function App(){
     <Shell>
       <div className="w-full max-w-2xl border-4 border-black bg-[#F9F9F7] p-12">
         <div className="flex items-center gap-4 border-b-4 border-black pb-6 mb-8">
-          <button onClick={()=>setMode('setup')} className="border-2 border-black p-2 hover:bg-black hover:text-white transition"><ChevronLeft className="w-6 h-6" strokeWidth={2}/></button>
+          <button onClick={()=>setMode('Home')} className="border-2 border-black p-2 hover:bg-black hover:text-white transition"><ChevronLeft className="w-6 h-6" strokeWidth={2}/></button>
           <div><div className="text-xs font-mono tracking-widest uppercase text-[#CC0000]">Config</div><h1 className="text-4xl font-black" style={{fontFamily:"'Playfair Display',serif"}}>Settings</h1></div>
         </div>
         <div className="space-y-8">
