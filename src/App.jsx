@@ -6,7 +6,7 @@ const STRETCHES = [
   { id: 2, name: "Shoulder Rolls", description: "Stand up, roll shoulders backward 5 times, then forward 5 times", Reps: 15, fallbackEmoji: "💪", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Shoulder_shrugs/video_media_01KG8B226QGMN86GP43EKEJMNH.mp4" },
   { id: 3, name: "Torso Twist", description: "Stand with feet shoulder-width apart, twist torso left and right alternating", Reps: 15, fallbackEmoji: "🔄", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Torso_twist/Torso+twist.mp4" },
   { id: 4, name: "Arm Circles", description: "Stand up, extend arms to sides, make small circles forward then backward", Reps: 20, fallbackEmoji: "⭕", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/video_media_01KG8B226QGMN86GP43EKEJMNH.mp4" },
-  { id: 5, name: "Side Bend", description: "Stand tall, reach right arm overhead and bend left, then switch sides", Reps: 15, fallbackEmoji: "🤸", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Side_bend/side+bend.mp4" }
+  { id: 5, name: "Side Bend", description: "Stand tall, reach right arm overhead and bend left, then switch sides", Reps: 15, fallbackEmoji: "🤸", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Side_bend/side+bend.mp4" },
   { id: 6, name: "Neck Rolls", description: "Gently roll head in a circle, 3 times each direction", Reps: 15, fallbackEmoji: "🤸", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/neck_rolls/Animate_this_manequin_202601312324_s2zxr.mp4" }
 ];
 
