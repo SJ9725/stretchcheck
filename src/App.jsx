@@ -141,17 +141,13 @@ export default function App() {
   const [breathSecondsLeft, setBreathSecondsLeft] = useState(0);
 
   const [hydrationEnabled, setHydrationEnabled] = useState(true);
-  const [hydrationIntervalMin, setHydrationIntervalMin] = useState(60);
   const [hydrationCount, setHydrationCount] = useState(0);
-  const [hydrationTimeLeft, setHydrationTimeLeft] = useState(0);
-  const [showHydrationReminder, setShowHydrationReminder] = useState(false);
   const [hydrationGoal, setHydrationGoal] = useState(8);
 
   const timerRef = useRef(null);
   const audioRef = useRef(null);
   const stretchTimerRef = useRef(null);
   const breathTimerRef = useRef(null);
-  const hydrationTimerRef = useRef(null);
 
   // ─── PERSIST: Load ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -177,7 +173,6 @@ export default function App() {
           if (p.soundStyle) setSoundStyle(p.soundStyle);
           if (p.soundVolume !== undefined) setSoundVolume(p.soundVolume);
           if (p.hydrationEnabled !== undefined) setHydrationEnabled(p.hydrationEnabled);
-          if (p.hydrationIntervalMin) setHydrationIntervalMin(p.hydrationIntervalMin);
           if (p.hydrationGoal) setHydrationGoal(p.hydrationGoal);
         }
       } catch { }
@@ -194,10 +189,10 @@ export default function App() {
   const savePrefs = useCallback(async () => {
     try {
       await window.storage.set('sc-prefs', JSON.stringify({
-        intervalMinutes, soundStyle, soundVolume, hydrationEnabled, hydrationIntervalMin, hydrationGoal
+        intervalMinutes, soundStyle, soundVolume, hydrationEnabled, hydrationGoal
       }));
     } catch { }
-  }, [intervalMinutes, soundStyle, soundVolume, hydrationEnabled, hydrationIntervalMin, hydrationGoal]);
+  }, [intervalMinutes, soundStyle, soundVolume, hydrationEnabled, hydrationGoal]);
 
   useEffect(() => { savePrefs(); }, [savePrefs]);
 
@@ -213,19 +208,6 @@ export default function App() {
     } else { if (timerRef.current) clearInterval(timerRef.current); }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isRunning, mode, intervalMinutes]);
-
-  // ─── HYDRATION TIMER ────────────────────────────────────────────────────
-  useEffect(() => {
-    if (isRunning && mode === 'running' && hydrationEnabled) {
-      hydrationTimerRef.current = setInterval(() => {
-        setHydrationTimeLeft(prev => {
-          if (prev <= 1) { setShowHydrationReminder(true); return hydrationIntervalMin * 60; }
-          return prev - 1;
-        });
-      }, 1000);
-    } else { if (hydrationTimerRef.current) clearInterval(hydrationTimerRef.current); }
-    return () => { if (hydrationTimerRef.current) clearInterval(hydrationTimerRef.current); };
-  }, [isRunning, mode, hydrationEnabled, hydrationIntervalMin]);
 
   // ─── STRETCH COUNTDOWN ──────────────────────────────────────────────────
   useEffect(() => {
@@ -261,36 +243,48 @@ export default function App() {
     return () => { if (breathTimerRef.current) clearInterval(breathTimerRef.current); };
   }, [breathingExercise, breathPhase, breathSecondsLeft]);
 
-  // ─── SOUND (with fallback if S3 blocked) ────────────────────────────────
-  const playSound = () => {
-    if (soundStyle === 'silent') return;
-    const url = SOUND_URLS[soundStyle];
+  // ─── SOUND (distinct synth tone per style + S3 attempt) ──────────────────
+  const playSound = (styleOverride) => {
+    const style = styleOverride || soundStyle;
+    if (style === 'silent') return;
 
-    // Synthesized fallback beep
-    const playFallbackBeep = () => {
+    // Each style has its own distinct synthesized sound
+    const synthSounds = {
+      bell: { freqs: [659.25, 830.61, 987.77], gap: 0.15, dur: 0.6, type: 'sine', vol: 0.3 },
+      marimba: { freqs: [523.25, 659.25, 783.99], gap: 0.12, dur: 0.3, type: 'triangle', vol: 0.4 },
+      notification: { freqs: [880, 1108.73], gap: 0.1, dur: 0.25, type: 'sine', vol: 0.25 },
+      gentle: { freqs: [440, 554.37, 659.25], gap: 0.25, dur: 0.8, type: 'sine', vol: 0.15 },
+      annoying: { freqs: [1000, 800, 1000, 800, 1200], gap: 0.08, dur: 0.15, type: 'square', vol: 0.2 },
+    };
+
+    const playSynth = () => {
       try {
+        const cfg = synthSounds[style] || synthSounds.bell;
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        [659.25, 830.61, 987.77].forEach((f, i) => {
+        cfg.freqs.forEach((f, i) => {
           const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = cfg.type;
           o.connect(g); g.connect(ctx.destination); o.frequency.value = f;
-          const t = ctx.currentTime + i * 0.15;
-          g.gain.setValueAtTime(soundVolume * 0.3, t);
-          g.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
-          o.start(t); o.stop(t + 0.6);
+          const t = ctx.currentTime + i * cfg.gap;
+          g.gain.setValueAtTime(soundVolume * cfg.vol, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + cfg.dur);
+          o.start(t); o.stop(t + cfg.dur);
         });
       } catch { }
     };
 
+    // Try S3 first, fall back to synth
+    const url = SOUND_URLS[style];
     if (url) {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
       const audio = new Audio(url);
       audio.volume = soundVolume;
       audio.crossOrigin = 'anonymous';
-      audio.onerror = () => playFallbackBeep();
-      audio.play().catch(() => playFallbackBeep());
+      audio.onerror = () => playSynth();
+      audio.play().catch(() => playSynth());
       audioRef.current = audio;
     } else {
-      playFallbackBeep();
+      playSynth();
     }
   };
 
@@ -307,7 +301,6 @@ export default function App() {
 
   const startApp = () => {
     setTimeLeft(intervalMinutes * 60);
-    setHydrationTimeLeft(hydrationIntervalMin * 60);
     setIsRunning(true);
     setMode('running');
     trackEvent('session_started', { interval: intervalMinutes });
@@ -334,7 +327,6 @@ export default function App() {
   const logWater = () => {
     const nc = hydrationCount + 1;
     setHydrationCount(nc);
-    setShowHydrationReminder(false);
     saveStats({ hydrationCount: nc });
     trackEvent('water_logged', { count: nc });
   };
@@ -427,29 +419,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* HYDRATION TOAST */}
-        {showHydrationReminder && (
-          <div className="slide-down" style={{ width: '100%', backgroundColor: '#0ea5e9', color: '#ffffff', borderBottom: '4px solid #0284c7' }}>
-            <div style={{ maxWidth: 672, margin: '0 auto', padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 24 }}>💧</span>
-                <div>
-                  <div style={{ fontWeight: 'bold', fontSize: 14 }}>Time for water!</div>
-                  <div style={{ ...mono(10), opacity: 0.8 }}>{hydrationCount}/{hydrationGoal} glasses today</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={logWater} style={{ backgroundColor: '#fff', color: '#0ea5e9', padding: '8px 16px', fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.15em', border: '2px solid #fff', cursor: 'pointer' }}>
-                  💧 Drank!
-                </button>
-                <button onClick={() => setShowHydrationReminder(false)} style={{ border: '2px solid rgba(255,255,255,0.5)', background: 'none', color: '#fff', padding: '8px 12px', cursor: 'pointer' }}>
-                  <X className="w-4 h-4" strokeWidth={2} />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
+        {/* Content */}
         <div className="flex items-start justify-center p-4 sm:p-6 min-h-[calc(100vh-52px)]">
           <div className="w-full max-w-2xl">{children}</div>
         </div>
@@ -491,7 +461,8 @@ export default function App() {
 
           {/* Interval */}
           <div className="fade-up fade-up-d1">
-            <label className="block mb-3" style={mono(10)}>Reminder Interval</label>
+            <label className="block mb-1" style={mono(10)}>Reminder Interval</label>
+            <p className="text-sm text-neutral-500 mb-3">You'll get a stretch reminder after this much time. Pick what works with your flow.</p>
             <div className="grid grid-cols-5 gap-px bg-black border-2 border-black">
               {[{ l: '15m', v: 15 }, { l: '30m', v: 30 }, { l: '45m', v: 45 }, { l: '1h', v: 60 }, { l: '90m', v: 90 }].map(o => (
                 <button key={o.v} onClick={() => setIntervalMinutes(o.v)}
@@ -509,33 +480,21 @@ export default function App() {
                 <div>
                   <div className="font-bold text-sm">Hydration Reminders</div>
                   <div style={{ ...mono(10), color: '#999' }}>
-                    {hydrationEnabled ? `Every ${hydrationIntervalMin}min · Goal: ${hydrationGoal} glasses` : 'Disabled'}
+                    {hydrationEnabled ? `Shown with each stretch · Goal: ${hydrationGoal} glasses` : 'Disabled'}
                   </div>
                 </div>
               </div>
               <Toggle enabled={hydrationEnabled} onToggle={() => setHydrationEnabled(!hydrationEnabled)} activeColor="#0ea5e9" />
             </div>
             {hydrationEnabled && (
-              <div className="border-t border-neutral-200 p-5 space-y-4">
-                <div>
-                  <label className="block mb-2" style={mono(10)}>Remind Every</label>
-                  <div className="grid grid-cols-4 gap-px bg-black border-2 border-black">
-                    {[{ l: '30m', v: 30 }, { l: '45m', v: 45 }, { l: '1h', v: 60 }, { l: '90m', v: 90 }].map(o => (
-                      <button key={o.v} onClick={() => setHydrationIntervalMin(o.v)}
-                        className={`p-2 font-bold text-xs transition-all ${hydrationIntervalMin === o.v ? 'bg-[#0ea5e9] text-white' : 'bg-white hover:bg-neutral-50'}`}
-                        style={{ fontFamily: "'JetBrains Mono', monospace" }}>{o.l}</button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block mb-2" style={mono(10)}>Daily Goal (glasses)</label>
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => setHydrationGoal(Math.max(1, hydrationGoal - 1))}
-                      className="border-2 border-black p-2 hover:bg-black hover:text-white transition-all"><Minus className="w-4 h-4" strokeWidth={2} /></button>
-                    <div className="text-2xl font-bold flex-1 text-center" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{hydrationGoal}</div>
-                    <button onClick={() => setHydrationGoal(Math.min(20, hydrationGoal + 1))}
-                      className="border-2 border-black p-2 hover:bg-black hover:text-white transition-all"><Plus className="w-4 h-4" strokeWidth={2} /></button>
-                  </div>
+              <div className="border-t border-neutral-200 p-5">
+                <label className="block mb-2" style={mono(10)}>Daily Goal (glasses)</label>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setHydrationGoal(Math.max(1, hydrationGoal - 1))}
+                    className="border-2 border-black p-2 hover:bg-black hover:text-white transition-all"><Minus className="w-4 h-4" strokeWidth={2} /></button>
+                  <div className="text-2xl font-bold flex-1 text-center" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{hydrationGoal}</div>
+                  <button onClick={() => setHydrationGoal(Math.min(20, hydrationGoal + 1))}
+                    className="border-2 border-black p-2 hover:bg-black hover:text-white transition-all"><Plus className="w-4 h-4" strokeWidth={2} /></button>
                 </div>
               </div>
             )}
@@ -645,7 +604,7 @@ export default function App() {
                 { s: 'annoying', i: Zap, l: 'Urgent' },
                 { s: 'silent', i: VolumeX, l: 'Silent' },
               ].map(({ s, i: I, l }) => (
-                <button key={s} onClick={() => { setSoundStyle(s); setTimeout(playSound, 100); }}
+                <button key={s} onClick={() => { setSoundStyle(s); playSound(s); }}
                   className={`p-4 transition-all flex items-center justify-center gap-2 ${soundStyle === s ? 'bg-black text-white' : 'bg-white hover:bg-neutral-50'}`}>
                   <I className="w-4 h-4" strokeWidth={1.5} />
                   <span className="font-bold" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>{l}</span>
@@ -799,7 +758,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Stats row with hydration timer */}
+            {/* Stats row */}
             <div className="grid grid-cols-2 gap-3 mb-6">
               <div className="border-2 border-black p-4">
                 <div style={{ ...mono(10), color: '#CC0000' }}>Stretches</div>
@@ -812,10 +771,9 @@ export default function App() {
                   {hydrationCount}<span style={{ fontSize: 18, color: '#aaa' }}>/{hydrationGoal}</span>
                 </div>
                 {hydrationEnabled && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                    <Droplets className="w-3 h-3 text-[#0ea5e9]" strokeWidth={2} />
-                    <span style={{ ...mono(10), color: '#0ea5e9' }}>{formatTime(hydrationTimeLeft)}</span>
-                  </div>
+                  <button onClick={logWater} style={{ ...mono(9), color: '#0ea5e9', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 4, textDecoration: 'underline' }}>
+                    + log a glass
+                  </button>
                 )}
               </div>
             </div>
@@ -838,12 +796,6 @@ export default function App() {
                 <Btn onClick={() => setMode('stats')} small icon={BarChart3}>Stats</Btn>
                 <Btn onClick={() => triggerReminder()} small icon={Zap}>Now</Btn>
               </div>
-              {hydrationEnabled && (
-                <button onClick={logWater}
-                  className="w-full py-3 font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 border-2 border-[#0ea5e9] text-[#0ea5e9] bg-white hover:bg-[#0ea5e9] hover:text-white">
-                  <Droplets className="w-4 h-4" strokeWidth={2} />Log Water ({hydrationCount}/{hydrationGoal})
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -902,6 +854,23 @@ export default function App() {
                 </button>
               )}
             </div>
+
+            {/* Hydration nudge — shown with every stretch reminder */}
+            {hydrationEnabled && (
+              <div style={{ border: '2px solid #0ea5e9', padding: 16, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f0f9ff' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 24 }}>💧</span>
+                  <div>
+                    <div style={{ fontWeight: 'bold', fontSize: 13 }}>Grab some water too!</div>
+                    <div style={{ ...mono(10), color: '#0ea5e9' }}>{hydrationCount}/{hydrationGoal} glasses today</div>
+                  </div>
+                </div>
+                <button onClick={logWater}
+                  style={{ backgroundColor: '#0ea5e9', color: '#fff', border: '2px solid #0ea5e9', padding: '8px 16px', fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', transition: 'opacity 0.2s' }}>
+                  +1 Glass
+                </button>
+              </div>
+            )}
 
             <div className="space-y-2">
               <button onClick={completeStretch}
