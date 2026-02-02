@@ -111,6 +111,62 @@ const StretchVideo = React.memo(({ videoUrl, fallbackEmoji }) => {
   );
 });
 
+// ─── STRETCH TIMER (isolated to prevent parent re-renders) ───────────────────
+const StretchTimer = ({ duration, onComplete }) => {
+  const [timeLeft, setTimeLeft] = useState(duration);
+  const [isActive, setIsActive] = useState(false);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (isActive && timeLeft > 0) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            setIsActive(false);
+            clearInterval(timerRef.current);
+            if (onComplete) onComplete();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [isActive, timeLeft, onComplete]);
+
+  const progress = duration > 0 ? ((duration - timeLeft) / duration) * 100 : 0;
+  const mono = { fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', letterSpacing: '0.15em', textTransform: 'uppercase' };
+
+  return (
+    <div style={{ border: '2px solid #000', padding: 20, marginBottom: 24, textAlign: 'center' }}>
+      <div style={{ ...mono, color: '#999', marginBottom: 12 }}>
+        {isActive ? 'Stretching…' : timeLeft === 0 ? '✓ Done!' : 'Guided Timer'}
+      </div>
+      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 48, fontWeight: 'bold', marginBottom: 12 }}>{timeLeft}s</div>
+      <div style={{ height: 12, border: '1px solid #000', overflow: 'hidden', position: 'relative', backgroundColor: '#f5f5f5', marginBottom: 16 }}>
+        <div style={{ 
+          position: 'absolute', inset: 0, 
+          width: `${progress}%`, 
+          backgroundColor: timeLeft === 0 ? '#22c55e' : '#CC0000',
+          transition: 'width 1s linear'
+        }} />
+      </div>
+      {!isActive && timeLeft > 0 && (
+        <button onClick={() => setIsActive(true)}
+          style={{ 
+            border: '2px solid #000', padding: '8px 24px', fontWeight: 'bold', cursor: 'pointer',
+            fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase',
+            backgroundColor: '#fff', transition: 'all 0.2s'
+          }}
+          onMouseOver={e => { e.currentTarget.style.backgroundColor = '#000'; e.currentTarget.style.color = '#fff'; }}
+          onMouseOut={e => { e.currentTarget.style.backgroundColor = '#fff'; e.currentTarget.style.color = '#000'; }}>
+          ▶ START TIMER
+        </button>
+      )}
+    </div>
+  );
+};
+
 // ═════════════════════════════════════════════════════════════════════════════
 // MAIN APP
 // ═════════════════════════════════════════════════════════════════════════════
@@ -131,9 +187,6 @@ export default function App() {
   const [bestStreak, setBestStreak] = useState(0);
   const [weeklyData, setWeeklyData] = useState([0, 0, 0, 0, 0, 0, 0]);
 
-  const [stretchTimeLeft, setStretchTimeLeft] = useState(0);
-  const [stretchTimerActive, setStretchTimerActive] = useState(false);
-
   const [breathingExercise, setBreathingExercise] = useState(null);
   const [breathPhase, setBreathPhase] = useState(0);
   const [breathCycles, setBreathCycles] = useState(0);
@@ -145,7 +198,6 @@ export default function App() {
 
   const timerRef = useRef(null);
   const audioRef = useRef(null);
-  const stretchTimerRef = useRef(null);
   const breathTimerRef = useRef(null);
 
   // ─── PERSIST: Load ──────────────────────────────────────────────────────
@@ -207,19 +259,6 @@ export default function App() {
     } else { if (timerRef.current) clearInterval(timerRef.current); }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isRunning, mode, intervalMinutes]);
-
-  // ─── STRETCH COUNTDOWN ──────────────────────────────────────────────────
-  useEffect(() => {
-    if (stretchTimerActive && stretchTimeLeft > 0) {
-      stretchTimerRef.current = setInterval(() => {
-        setStretchTimeLeft(prev => {
-          if (prev <= 1) { setStretchTimerActive(false); clearInterval(stretchTimerRef.current); return 0; }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => { if (stretchTimerRef.current) clearInterval(stretchTimerRef.current); };
-  }, [stretchTimerActive]);
 
   // ─── BREATHING TIMER ────────────────────────────────────────────────────
   useEffect(() => {
@@ -291,8 +330,6 @@ export default function App() {
   const triggerReminder = () => {
     const pick = STRETCHES[Math.floor(Math.random() * STRETCHES.length)];
     setCurrentStretch(pick);
-    setStretchTimeLeft(pick.duration);
-    setStretchTimerActive(false);
     setMode('reminder');
     playSound();
     trackEvent('reminder_triggered', { stretch: pick.name });
@@ -305,7 +342,7 @@ export default function App() {
     trackEvent('session_started', { interval: intervalMinutes });
   };
 
-  const skipStretch = () => { setMode('running'); setCurrentStretch(null); setStretchTimerActive(false); trackEvent('stretch_skipped'); };
+  const skipStretch = () => { setMode('running'); setCurrentStretch(null); trackEvent('stretch_skipped'); };
 
   const completeStretch = () => {
     const nc = stretchCount + 1;
@@ -806,7 +843,6 @@ export default function App() {
   // REMINDER — S3 videos with onError fallback
   // ═════════════════════════════════════════════════════════════════════════
   if (mode === 'reminder' && currentStretch) {
-    const sProg = currentStretch.duration > 0 ? ((currentStretch.duration - stretchTimeLeft) / currentStretch.duration) * 100 : 0;
     return (
       <Shell>
         <div className="border-4 border-black bg-[#FAFAF7]">
@@ -835,24 +871,8 @@ export default function App() {
               <p className="text-sm leading-relaxed">{currentStretch.description}</p>
             </div>
 
-            {/* Guided timer */}
-            <div className="border-2 border-black p-5 mb-6 text-center">
-              <div style={{ ...mono(10), color: '#999', marginBottom: 12 }}>
-                {stretchTimerActive ? 'Stretching…' : stretchTimeLeft === 0 ? '✓ Done!' : 'Guided Timer'}
-              </div>
-              <div className="text-5xl font-bold mb-3" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{stretchTimeLeft}s</div>
-              <div className="h-3 border border-black overflow-hidden relative bg-neutral-100 mb-4">
-                <div className="absolute inset-0 transition-all duration-1000"
-                  style={{ width: `${sProg}%`, backgroundColor: stretchTimeLeft === 0 ? '#22c55e' : '#CC0000' }} />
-              </div>
-              {!stretchTimerActive && stretchTimeLeft > 0 && (
-                <button onClick={() => setStretchTimerActive(true)}
-                  className="border-2 border-black px-6 py-2 font-bold hover:bg-black hover:text-white transition-all"
-                  style={{ ...mono(11), cursor: 'pointer' }}>
-                  <Play className="w-4 h-4 inline mr-2" strokeWidth={2} />START TIMER
-                </button>
-              )}
-            </div>
+            {/* Guided timer — isolated component to prevent screen re-renders */}
+            <StretchTimer key={currentStretch.id} duration={currentStretch.duration} />
 
             {/* Hydration nudge — shown with every stretch reminder */}
             {hydrationEnabled && (
