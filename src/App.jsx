@@ -1,207 +1,773 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Camera, X, Check, Settings, Play, Pause, TrendingUp, Clock, ChevronLeft, Volume2, VolumeX, Bell, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Check, X, Settings, Play, Pause, TrendingUp, ChevronLeft, Volume2, VolumeX, Bell, Sparkles, Share2, BarChart3, ArrowRight, RotateCcw, Zap, Droplets, Plus, Minus } from 'lucide-react';
 
+// ─── STRETCH LIBRARY ─────────────────────────────────────────────────────────
 const STRETCHES = [
-  { id: 1, name: "Overhead Reach", description: "Stand up, reach both arms overhead, interlace fingers, and stretch upward", duration: 15, fallbackEmoji: "🙆", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Arm_stretch/Arm+stretch.mp4" },
-  { id: 2, name: "Shoulder Rolls", description: "Stand up, roll shoulders backward 5 times, then forward 5 times", duration: 15, fallbackEmoji: "💪", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Shoulder_shrugs/video_media_01KG8B226QGMN86GP43EKEJMNH.mp4" },
-  { id: 3, name: "Torso Twist", description: "Stand with feet shoulder-width apart, twist torso left and right alternating", duration: 15, fallbackEmoji: "🔄", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Torso_twist/Torso+twist.mp4" },
-  { id: 4, name: "Arm Circles", description: "Stand up, extend arms to sides, make small circles forward then backward", duration: 20, fallbackEmoji: "⭕", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/video_media_01KG8B226QGMN86GP43EKEJMNH.mp4" },
-  { id: 5, name: "Side Bend", description: "Stand tall, reach right arm overhead and bend left, then switch sides", duration: 15, fallbackEmoji: "🤸", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Side_bend/side+bend.mp4" },
-  { id: 6, name: "Neck Rolls", description: "Gently roll head in a circle, 3 times each direction", duration: 15, fallbackEmoji: "🤸", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/neck_rolls/Animate_this_manequin_202601312324_s2zxr.mp4" }
+  { id: 1, name: "Overhead Reach", area: "upper", description: "Stand up, reach both arms overhead, interlace fingers, and stretch upward", duration: 15, fallbackEmoji: "🙆", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Arm_stretch/Arm+stretch.mp4" },
+  { id: 2, name: "Shoulder Rolls", area: "upper", description: "Stand up, roll shoulders backward 5 times, then forward 5 times", duration: 15, fallbackEmoji: "💪", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Shoulder_shrugs/video_media_01KG8B226QGMN86GP43EKEJMNH.mp4" },
+  { id: 3, name: "Torso Twist", area: "core", description: "Stand with feet shoulder-width apart, twist torso left and right alternating", duration: 15, fallbackEmoji: "🔄", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Torso_twist/Torso+twist.mp4" },
+  { id: 4, name: "Arm Circles", area: "upper", description: "Stand up, extend arms to sides, make small circles forward then backward", duration: 20, fallbackEmoji: "⭕", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/video_media_01KG8B226QGMN86GP43EKEJMNH.mp4" },
+  { id: 5, name: "Side Bend", area: "core", description: "Stand tall, reach right arm overhead and bend left, then switch sides", duration: 15, fallbackEmoji: "🤸", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Side_bend/side+bend.mp4" },
+  { id: 6, name: "Neck Rolls", area: "upper", description: "Gently roll head in a circle, 3 times each direction", duration: 15, fallbackEmoji: "🧘", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/neck_rolls/Animate_this_manequin_202601312324_s2zxr.mp4" },
+  { id: 7, name: "Wrist Flexion", area: "upper", description: "Extend one arm forward, palm up. Use other hand to gently pull fingers down. Hold 10s each wrist.", duration: 20, fallbackEmoji: "🤲", videoUrl: "" },
+  { id: 8, name: "Chest Opener", area: "upper", description: "Clasp hands behind your back. Squeeze shoulder blades together, lift hands slightly, and open your chest. Hold 15 seconds.", duration: 20, fallbackEmoji: "🫁", videoUrl: "" },
+  { id: 9, name: "Standing Quad Stretch", area: "lower", description: "Stand on one foot, grab the other ankle behind you. Keep knees together and hold 15 seconds each leg.", duration: 30, fallbackEmoji: "🦵", videoUrl: "" },
+  { id: 10, name: "Calf Raise", area: "lower", description: "Rise onto your toes, hold 3 seconds at the top, slowly lower. Repeat 10 times. Hold a wall for balance.", duration: 25, fallbackEmoji: "🦶", videoUrl: "" },
+  { id: 11, name: "Cat-Cow Standing", area: "core", description: "Hands on knees, slightly bent. Round your spine (cat), then arch it (cow). Move slowly, 5 reps each.", duration: 25, fallbackEmoji: "🐱", videoUrl: "" },
+  { id: 12, name: "Figure Four Stretch", area: "lower", description: "Cross right ankle over left knee. Sit back slightly like a half-squat. Hold 15 seconds each side.", duration: 30, fallbackEmoji: "4️⃣", videoUrl: "" },
+  { id: 13, name: "Eye 20-20-20", area: "eyes", description: "Look at something 20 feet away for 20 seconds. Blink slowly 10 times. Repeat with a different focal point.", duration: 25, fallbackEmoji: "👁️", videoUrl: "" },
 ];
 
-const Btn=({children,onClick,primary,icon:I})=><button onClick={onClick} className={`w-full py-4 font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${primary?'bg-black text-white border-2 border-black hover:bg-white hover:text-black':'border-2 border-black bg-white hover:bg-neutral-100'}`}>{I&&<I className="w-5 h-5" strokeWidth={2}/>}{children}</button>;
+// ─── BREATHING EXERCISES ─────────────────────────────────────────────────────
+const BREATHING_EXERCISES = [
+  {
+    id: 'b1', name: "Box Breathing", pattern: [4, 4, 4, 4], labels: ["Inhale", "Hold", "Exhale", "Hold"],
+    emoji: "📦", context: "Pre-interview · Before a tough meeting · Calming anxiety",
+    description: "Used by Navy SEALs to stay calm under pressure. Equal parts inhale, hold, exhale, hold. Do 4 cycles before your next stressful event.",
+    tip: "Try this 5 minutes before a meeting with your boss or a job interview. It activates your parasympathetic nervous system and lowers cortisol.",
+    color: "#2563eb"
+  },
+  {
+    id: 'b2', name: "4-7-8 Relaxation", pattern: [4, 7, 8, 0], labels: ["Inhale", "Hold", "Exhale", "—"],
+    emoji: "🌊", context: "Wind down after work · Can't sleep · Feeling overwhelmed",
+    description: "Dr. Andrew Weil's natural tranquilizer for the nervous system. The long exhale triggers deep relaxation.",
+    tip: "Perfect for the end of your workday. The extended exhale tells your body it's safe to switch off. Two cycles and you'll feel the tension melt.",
+    color: "#7c3aed"
+  },
+  {
+    id: 'b3', name: "Energizing Breath", pattern: [2, 0, 2, 0], labels: ["Inhale", "—", "Exhale", "—"],
+    emoji: "⚡", context: "Post-lunch slump · Need quick focus · Before a presentation",
+    description: "Quick rhythmic breathing that floods your system with oxygen. Short, sharp cycles to boost alertness fast.",
+    tip: "Feeling that 2pm energy crash? Do 10 rapid cycles of this. It's like a caffeine hit without the coffee. Great before presentations too.",
+    color: "#dc2626"
+  },
+];
 
-export default function App(){
-  const [mode,setMode]=useState('setup');
-  const [advancedMode,setAdvancedMode]=useState(false);
-  const [intervalMinutes,setIntervalMinutes]=useState(45);
-  const [isRunning,setIsRunning]=useState(false);
-  const [timeLeft,setTimeLeft]=useState(0);
-  const [currentStretch,setCurrentStretch]=useState(null);
-  const [stretchCount,setStretchCount]=useState(0);
-  const [soundVolume,setSoundVolume]=useState(0.5);
-  const [soundStyle,setSoundStyle]=useState('chime');
-  
-  const timerRef=useRef(null);
+const AREA_LABELS = { upper: "Upper Body", core: "Core & Back", lower: "Lower Body", eyes: "Eyes & Face" };
 
-  useEffect(()=>{
-    if(isRunning&&mode==='running'){
-      timerRef.current=setInterval(()=>{
-        setTimeLeft(prev=>{if(prev<=1){triggerReminder();return intervalMinutes*60;}return prev-1;});
-      },1000);
-    }else{if(timerRef.current)clearInterval(timerRef.current);}
-    return()=>{if(timerRef.current)clearInterval(timerRef.current);};
-  },[isRunning,mode,intervalMinutes]);
+// ─── S3 SOUNDS ───────────────────────────────────────────────────────────────
+const SOUND_URLS = {
+  bell: "",
+  marimba: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/sounds/Firefly_audio_A_soft_marimba_note._Warm_wooden_tone._Minimal_and_variation1.wav",
+  notification: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/sounds/Firefly_audio_A_soft%2C_calming_notification_sound._Two_gentle_bel_variation3.wav",
+  gentle: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/sounds/Firefly_audio_A_light%2C_airy_notification_sound._A_air_pop_or_who_variation1.wav",
+  annoying: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/sounds/microsoft+teams+ringtone+remix+this+is+looking+best.mp3",
+};
 
-  const playSound=()=>{
-    if(soundStyle==='silent')return;
-    const ctx=new(window.AudioContext||window.webkitAudioContext)(),vol=soundVolume;
-    if(soundStyle==='chime')[659.25,830.61,987.77].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=f;const t=ctx.currentTime+i*0.15;g.gain.setValueAtTime(vol*0.3,t);g.gain.exponentialRampToValueAtTime(0.01,t+0.6);o.start(t);o.stop(t+0.6);});
+const trackEvent = (name, data = {}) => {
+  if (typeof window !== 'undefined') {
+    window.__SC_EVENTS = window.__SC_EVENTS || [];
+    window.__SC_EVENTS.push({ name, data, ts: Date.now() });
+  }
+};
+
+// ─── BUTTON ──────────────────────────────────────────────────────────────────
+const Btn = ({ children, onClick, primary, small, icon: I, disabled }) => (
+  <button onClick={onClick} disabled={disabled}
+    className={`w-full font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2
+      ${small ? 'py-2 text-xs' : 'py-4'}
+      ${disabled ? 'opacity-40 cursor-not-allowed' : ''}
+      ${primary ? 'bg-black text-white border-2 border-black hover:bg-white hover:text-black'
+        : 'border-2 border-black bg-white hover:bg-neutral-100'}`}>
+    {I && <I className={small ? "w-4 h-4" : "w-5 h-5"} strokeWidth={2} />}{children}
+  </button>
+);
+
+// ─── TOGGLE SWITCH ───────────────────────────────────────────────────────────
+const Toggle = ({ enabled, onToggle, activeColor = '#000' }) => (
+  <button onClick={onToggle}
+    style={{ width: 52, height: 28, borderWidth: 2, borderColor: '#000', position: 'relative', transition: 'background-color 0.2s', backgroundColor: enabled ? activeColor : '#fff' }}>
+    <div style={{
+      position: 'absolute', top: 3, width: 18, height: 18,
+      border: '1px solid #000', transition: 'left 0.2s',
+      left: enabled ? 27 : 3,
+      backgroundColor: enabled ? '#fff' : '#000',
+    }} />
+  </button>
+);
+
+// ─── VIDEO PLAYER WITH FALLBACK ──────────────────────────────────────────────
+const StretchVideo = ({ videoUrl, fallbackEmoji }) => {
+  const [videoFailed, setVideoFailed] = useState(false);
+
+  if (!videoUrl || videoFailed) {
+    return (
+      <div style={{ padding: '64px 0', textAlign: 'center' }}>
+        <div style={{ fontSize: '120px', filter: 'grayscale(1)' }}>{fallbackEmoji}</div>
+      </div>
+    );
+  }
+
+  return (
+    <video
+      src={videoUrl}
+      autoPlay
+      loop
+      muted
+      playsInline
+      crossOrigin="anonymous"
+      onError={() => setVideoFailed(true)}
+      style={{ width: '100%', height: 'auto', maxHeight: '400px', objectFit: 'contain', display: 'block' }}
+    />
+  );
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// MAIN APP
+// ═════════════════════════════════════════════════════════════════════════════
+export default function App() {
+  const [mode, setMode] = useState('setup');
+  const [intervalMinutes, setIntervalMinutes] = useState(45);
+  const [isRunning, setIsRunning] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [currentStretch, setCurrentStretch] = useState(null);
+
+  const [soundVolume, setSoundVolume] = useState(0.5);
+  const [soundStyle, setSoundStyle] = useState('bell');
+
+  const [stretchCount, setStretchCount] = useState(0);
+  const [totalSeconds, setTotalSeconds] = useState(0);
+  const [sessionHistory, setSessionHistory] = useState([]);
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [weeklyData, setWeeklyData] = useState([0, 0, 0, 0, 0, 0, 0]);
+
+  const [stretchTimeLeft, setStretchTimeLeft] = useState(0);
+  const [stretchTimerActive, setStretchTimerActive] = useState(false);
+
+  const [breathingExercise, setBreathingExercise] = useState(null);
+  const [breathPhase, setBreathPhase] = useState(0);
+  const [breathCycles, setBreathCycles] = useState(0);
+  const [breathSecondsLeft, setBreathSecondsLeft] = useState(0);
+
+  const [hydrationEnabled, setHydrationEnabled] = useState(true);
+  const [hydrationIntervalMin, setHydrationIntervalMin] = useState(60);
+  const [hydrationCount, setHydrationCount] = useState(0);
+  const [hydrationTimeLeft, setHydrationTimeLeft] = useState(0);
+  const [showHydrationReminder, setShowHydrationReminder] = useState(false);
+  const [hydrationGoal, setHydrationGoal] = useState(8);
+
+  const timerRef = useRef(null);
+  const audioRef = useRef(null);
+  const stretchTimerRef = useRef(null);
+  const breathTimerRef = useRef(null);
+  const hydrationTimerRef = useRef(null);
+
+  // ─── PERSIST: Load ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const stats = await window.storage.get('sc-stats');
+        if (stats) {
+          const d = JSON.parse(stats.value);
+          if (d.stretchCount) setStretchCount(d.stretchCount);
+          if (d.totalSeconds) setTotalSeconds(d.totalSeconds);
+          if (d.streak) setStreak(d.streak);
+          if (d.bestStreak) setBestStreak(d.bestStreak);
+          if (d.weeklyData) setWeeklyData(d.weeklyData);
+          if (d.sessionHistory) setSessionHistory(d.sessionHistory);
+          if (d.hydrationCount) setHydrationCount(d.hydrationCount);
+        }
+      } catch { }
+      try {
+        const prefs = await window.storage.get('sc-prefs');
+        if (prefs) {
+          const p = JSON.parse(prefs.value);
+          if (p.intervalMinutes) setIntervalMinutes(p.intervalMinutes);
+          if (p.soundStyle) setSoundStyle(p.soundStyle);
+          if (p.soundVolume !== undefined) setSoundVolume(p.soundVolume);
+          if (p.hydrationEnabled !== undefined) setHydrationEnabled(p.hydrationEnabled);
+          if (p.hydrationIntervalMin) setHydrationIntervalMin(p.hydrationIntervalMin);
+          if (p.hydrationGoal) setHydrationGoal(p.hydrationGoal);
+        }
+      } catch { }
+    };
+    load();
+  }, []);
+
+  // ─── PERSIST: Save ─────────────────────────────────────────────────────
+  const saveStats = useCallback(async (updates = {}) => {
+    const data = { stretchCount, totalSeconds, streak, bestStreak, weeklyData, sessionHistory, hydrationCount, ...updates };
+    try { await window.storage.set('sc-stats', JSON.stringify(data)); } catch { }
+  }, [stretchCount, totalSeconds, streak, bestStreak, weeklyData, sessionHistory, hydrationCount]);
+
+  const savePrefs = useCallback(async () => {
+    try {
+      await window.storage.set('sc-prefs', JSON.stringify({
+        intervalMinutes, soundStyle, soundVolume, hydrationEnabled, hydrationIntervalMin, hydrationGoal
+      }));
+    } catch { }
+  }, [intervalMinutes, soundStyle, soundVolume, hydrationEnabled, hydrationIntervalMin, hydrationGoal]);
+
+  useEffect(() => { savePrefs(); }, [savePrefs]);
+
+  // ─── MAIN TIMER ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (isRunning && mode === 'running') {
+      timerRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) { triggerReminder(); return intervalMinutes * 60; }
+          return prev - 1;
+        });
+      }, 1000);
+    } else { if (timerRef.current) clearInterval(timerRef.current); }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [isRunning, mode, intervalMinutes]);
+
+  // ─── HYDRATION TIMER ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (isRunning && mode === 'running' && hydrationEnabled) {
+      hydrationTimerRef.current = setInterval(() => {
+        setHydrationTimeLeft(prev => {
+          if (prev <= 1) { setShowHydrationReminder(true); return hydrationIntervalMin * 60; }
+          return prev - 1;
+        });
+      }, 1000);
+    } else { if (hydrationTimerRef.current) clearInterval(hydrationTimerRef.current); }
+    return () => { if (hydrationTimerRef.current) clearInterval(hydrationTimerRef.current); };
+  }, [isRunning, mode, hydrationEnabled, hydrationIntervalMin]);
+
+  // ─── STRETCH COUNTDOWN ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (stretchTimerActive && stretchTimeLeft > 0) {
+      stretchTimerRef.current = setInterval(() => {
+        setStretchTimeLeft(prev => {
+          if (prev <= 1) { setStretchTimerActive(false); clearInterval(stretchTimerRef.current); return 0; }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => { if (stretchTimerRef.current) clearInterval(stretchTimerRef.current); };
+  }, [stretchTimerActive]);
+
+  // ─── BREATHING TIMER ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (breathingExercise && breathSecondsLeft > 0) {
+      breathTimerRef.current = setInterval(() => {
+        setBreathSecondsLeft(prev => {
+          if (prev <= 1) {
+            const ex = breathingExercise;
+            let next = (breathPhase + 1) % ex.pattern.length;
+            let safety = 0;
+            while (ex.pattern[next] === 0 && safety < 4) { next = (next + 1) % ex.pattern.length; safety++; }
+            if (next <= breathPhase) setBreathCycles(c => c + 1);
+            setBreathPhase(next);
+            return ex.pattern[next];
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => { if (breathTimerRef.current) clearInterval(breathTimerRef.current); };
+  }, [breathingExercise, breathPhase, breathSecondsLeft]);
+
+  // ─── SOUND (with fallback if S3 blocked) ────────────────────────────────
+  const playSound = () => {
+    if (soundStyle === 'silent') return;
+    const url = SOUND_URLS[soundStyle];
+
+    // Synthesized fallback beep
+    const playFallbackBeep = () => {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [659.25, 830.61, 987.77].forEach((f, i) => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.connect(g); g.connect(ctx.destination); o.frequency.value = f;
+          const t = ctx.currentTime + i * 0.15;
+          g.gain.setValueAtTime(soundVolume * 0.3, t);
+          g.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
+          o.start(t); o.stop(t + 0.6);
+        });
+      } catch { }
+    };
+
+    if (url) {
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
+      const audio = new Audio(url);
+      audio.volume = soundVolume;
+      audio.crossOrigin = 'anonymous';
+      audio.onerror = () => playFallbackBeep();
+      audio.play().catch(() => playFallbackBeep());
+      audioRef.current = audio;
+    } else {
+      playFallbackBeep();
+    }
   };
 
-  const triggerReminder=()=>{setCurrentStretch(STRETCHES[Math.floor(Math.random()*STRETCHES.length)]);setMode('reminder');playSound();};
-  const startApp=()=>{setTimeLeft(intervalMinutes*60);setIsRunning(true);setMode('running');};
-  const skipStretch=()=>{setMode('running');setCurrentStretch(null);};
-  const completeStretch=()=>{setStretchCount(p=>p+1);skipStretch();};
-  const formatTime=(s)=>`${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+  // ─── ACTIONS ────────────────────────────────────────────────────────────
+  const triggerReminder = () => {
+    const pick = STRETCHES[Math.floor(Math.random() * STRETCHES.length)];
+    setCurrentStretch(pick);
+    setStretchTimeLeft(pick.duration);
+    setStretchTimerActive(false);
+    setMode('reminder');
+    playSound();
+    trackEvent('reminder_triggered', { stretch: pick.name });
+  };
 
-  const Shell=({children})=>(
+  const startApp = () => {
+    setTimeLeft(intervalMinutes * 60);
+    setHydrationTimeLeft(hydrationIntervalMin * 60);
+    setIsRunning(true);
+    setMode('running');
+    trackEvent('session_started', { interval: intervalMinutes });
+  };
+
+  const skipStretch = () => { setMode('running'); setCurrentStretch(null); setStretchTimerActive(false); trackEvent('stretch_skipped'); };
+
+  const completeStretch = () => {
+    const nc = stretchCount + 1;
+    const ns = totalSeconds + (currentStretch?.duration || 0);
+    const day = new Date().getDay();
+    const nw = [...weeklyData]; nw[day] = (nw[day] || 0) + 1;
+    const nStreak = streak + (stretchCount === 0 ? 1 : 0);
+    const nBest = Math.max(bestStreak, nStreak);
+    const entry = { name: currentStretch?.name, area: currentStretch?.area, ts: Date.now() };
+    const nh = [...sessionHistory.slice(-49), entry];
+    setStretchCount(nc); setTotalSeconds(ns); setWeeklyData(nw);
+    setStreak(nStreak); setBestStreak(nBest); setSessionHistory(nh);
+    saveStats({ stretchCount: nc, totalSeconds: ns, weeklyData: nw, streak: nStreak, bestStreak: nBest, sessionHistory: nh });
+    setMode('running'); setCurrentStretch(null); setStretchTimerActive(false);
+    trackEvent('stretch_completed', { stretch: currentStretch?.name });
+  };
+
+  const logWater = () => {
+    const nc = hydrationCount + 1;
+    setHydrationCount(nc);
+    setShowHydrationReminder(false);
+    saveStats({ hydrationCount: nc });
+    trackEvent('water_logged', { count: nc });
+  };
+
+  const startBreathing = (ex) => {
+    setBreathingExercise(ex); setBreathCycles(0);
+    const first = ex.pattern.findIndex(p => p > 0);
+    setBreathPhase(first >= 0 ? first : 0);
+    setBreathSecondsLeft(ex.pattern[first >= 0 ? first : 0]);
+    setMode('breathing');
+    trackEvent('breathing_started', { exercise: ex.name });
+  };
+
+  const stopBreathing = () => {
+    setBreathingExercise(null);
+    if (breathTimerRef.current) clearInterval(breathTimerRef.current);
+    setMode(isRunning ? 'running' : 'setup');
+  };
+
+  const formatTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+
+  const resetStats = async () => {
+    setStretchCount(0); setTotalSeconds(0); setStreak(0); setWeeklyData([0, 0, 0, 0, 0, 0, 0]);
+    setSessionHistory([]); setHydrationCount(0);
+    try { await window.storage.delete('sc-stats'); } catch { }
+  };
+
+  const handleShare = async () => {
+    const text = `🔥 StretchCheck — Day ${streak} streak!\n💪 ${stretchCount} stretches completed\n💧 ${hydrationCount} glasses of water\n⏱️ ${Math.round(totalSeconds / 60)} minutes of movement\n\nTake care of your body while WFH!`;
+    if (navigator.share) { try { await navigator.share({ title: 'StretchCheck', text }); } catch { } }
+    else { try { await navigator.clipboard.writeText(text); } catch { } }
+    trackEvent('streak_shared');
+  };
+
+  // ─── FONT HELPERS ───────────────────────────────────────────────────────
+  const mono = (size = 10, extra = {}) => ({ fontFamily: "'JetBrains Mono', monospace", fontSize: `${size}px`, letterSpacing: '0.15em', textTransform: 'uppercase', ...extra });
+  const serif = { fontFamily: "'DM Serif Display', serif" };
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // SHELL
+  // ═════════════════════════════════════════════════════════════════════════
+  const Shell = ({ children }) => (
     <>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@700;900&family=Lora:wght@400&display=swap');body{background:#F9F9F7;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Cpath fill='%23111' fill-opacity='0.04' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'/%3E%3C/svg%3E")}*{border-radius:0!important}@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}.ticker-content{animation:scroll 30s linear infinite;display:inline-flex;white-space:nowrap}.ticker-wrapper{flex:1;overflow:hidden;position:relative}`}</style>
-      <div className="min-h-screen" style={{fontFamily:'Inter,sans-serif'}}>
-        <div className="w-full bg-black text-white border-b-4 border-black py-3 overflow-hidden">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+        body { background: #F5F1EB; margin: 0; }
+        * { border-radius: 0 !important; box-sizing: border-box; }
+        @keyframes scroll { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes slideDown { from{opacity:0;transform:translateY(-100%)} to{opacity:1;transform:translateY(0)} }
+        .ticker-content { animation: scroll 35s linear infinite; display:inline-flex; white-space:nowrap; }
+        .ticker-wrapper { flex:1; overflow:hidden; position:relative; }
+        .fade-up { animation: fadeUp 0.4s ease-out both; }
+        .fade-up-d1 { animation-delay:0.05s; }
+        .fade-up-d2 { animation-delay:0.1s; }
+        .fade-up-d3 { animation-delay:0.15s; }
+        .slide-down { animation: slideDown 0.4s ease-out both; }
+        input[type="range"] { -webkit-appearance:none; height:6px; background:#ddd; border:1px solid #000; outline:none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; background:#000; border:2px solid #000; cursor:pointer; }
+        input[type="range"]::-moz-range-thumb { width:18px; height:18px; background:#000; border:2px solid #000; cursor:pointer; border-radius:0; }
+      `}</style>
+      <div className="min-h-screen" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>
+        {/* TICKER — solid black bg, white text */}
+        <div style={{ width: '100%', backgroundColor: '#000000', color: '#ffffff', borderBottom: '4px solid #000', padding: '10px 0', overflow: 'hidden' }}>
           <div className="flex items-center">
-            <div className="bg-[#CC0000] px-6 py-2 font-bold text-xs uppercase tracking-widest flex-shrink-0 mr-4">Breaking News</div>
+            <div style={{ ...mono(10), backgroundColor: '#CC0000', color: '#ffffff', padding: '6px 20px', flexShrink: 0, marginRight: 16, fontWeight: 'bold' }}>Live</div>
             <div className="ticker-wrapper">
               <div className="ticker-content">
-                <span className="mx-6 text-sm font-mono">★ STUDY: <span className="text-[#CC0000]">73%</span> of remote workers forget to stretch during video calls</span>
-                <span className="mx-6 text-sm font-mono">★ BREAKING: Local developer discovers standing desk <span className="text-[#CC0000]">actually requires standing</span></span>
-                <span className="mx-6 text-sm font-mono">★ WFH ALERT: Your cat judging you for <span className="text-[#CC0000]">poor posture</span>, experts say</span>
-                <span className="mx-6 text-sm font-mono">★ URGENT: Coffee run doesn't count as <span className="text-[#CC0000]">cardio</span>, scientists confirm</span>
-                <span className="mx-6 text-sm font-mono">★ EXCLUSIVE: Couch ≠ <span className="text-[#CC0000]">Ergonomic chair</span>, survey finds</span>
-                <span className="mx-6 text-sm font-mono">★ REPORT: Pajama pants reduce stretch motivation by <span className="text-[#CC0000]">67%</span></span>
-                <span className="mx-6 text-sm font-mono">★ STUDY: <span className="text-[#CC0000]">73%</span> of remote workers forget to stretch during video calls</span>
-                <span className="mx-6 text-sm font-mono">★ BREAKING: Local developer discovers standing desk <span className="text-[#CC0000]">actually requires standing</span></span>
+                {[
+                  { t: "73% of remote workers skip stretches during video calls", h: "73%" },
+                  { t: "Local developer discovers standing desk actually requires standing", h: "actually requires standing" },
+                  { t: "Your cat is judging your poor posture right now", h: "poor posture" },
+                  { t: "Coffee run doesn't count as cardio, scientists confirm", h: "cardio" },
+                  { t: "Couch ≠ ergonomic chair, international survey finds", h: "ergonomic chair" },
+                  { t: "Pajama pants reduce stretch motivation by 67%", h: "67%" },
+                  { t: "Dehydration drops productivity by 25%, drink water now", h: "25%" },
+                  { t: "15-second micro-breaks reset muscle tension, new study finds", h: "micro-breaks" },
+                  { t: "73% of remote workers skip stretches during video calls", h: "73%" },
+                  { t: "Local developer discovers standing desk actually requires standing", h: "actually requires standing" },
+                ].map((item, i) => {
+                  const parts = item.t.split(item.h);
+                  return (
+                    <span key={i} style={{ ...mono(11, { letterSpacing: '0.03em' }), margin: '0 32px', color: '#ffffff' }}>
+                      ★ {parts[0]}<span style={{ color: '#CC0000', fontWeight: 'bold' }}>{item.h}</span>{parts[1] || ''}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </div>
         </div>
-        <div className="flex items-center justify-center p-6">{children}</div>
+
+        {/* HYDRATION TOAST */}
+        {showHydrationReminder && (
+          <div className="slide-down" style={{ width: '100%', backgroundColor: '#0ea5e9', color: '#ffffff', borderBottom: '4px solid #0284c7' }}>
+            <div style={{ maxWidth: 672, margin: '0 auto', padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 24 }}>💧</span>
+                <div>
+                  <div style={{ fontWeight: 'bold', fontSize: 14 }}>Time for water!</div>
+                  <div style={{ ...mono(10), opacity: 0.8 }}>{hydrationCount}/{hydrationGoal} glasses today</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={logWater} style={{ backgroundColor: '#fff', color: '#0ea5e9', padding: '8px 16px', fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.15em', border: '2px solid #fff', cursor: 'pointer' }}>
+                  💧 Drank!
+                </button>
+                <button onClick={() => setShowHydrationReminder(false)} style={{ border: '2px solid rgba(255,255,255,0.5)', background: 'none', color: '#fff', padding: '8px 12px', cursor: 'pointer' }}>
+                  <X className="w-4 h-4" strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-start justify-center p-4 sm:p-6 min-h-[calc(100vh-52px)]">
+          <div className="w-full max-w-2xl">{children}</div>
+        </div>
       </div>
     </>
   );
 
-  if(mode==='setup')return(
+  // ═════════════════════════════════════════════════════════════════════════
+  // SETUP
+  // ═════════════════════════════════════════════════════════════════════════
+  if (mode === 'setup') return (
     <Shell>
-      <div className="w-full max-w-2xl border-4 border-black bg-[#F9F9F7] p-12">
-        <div className="text-center border-b-4 border-black pb-8 mb-8">
-          <div className="text-xs font-mono tracking-widest uppercase mb-2 text-[#CC0000]">Vol. 1 | Health Edition</div>
-          <h1 className="text-7xl font-black leading-[0.9] tracking-tighter mb-4" style={{fontFamily:"'Playfair Display',serif"}}>StretchCheck</h1>
-          <p className="text-sm uppercase tracking-widest font-mono">Desktop Wellness Assistant</p>
-        </div>
-        <div className="space-y-6">
-          <div>
-            <label className="block text-xs font-mono uppercase tracking-widest mb-3">Interval</label>
-            <div className="grid grid-cols-5 gap-px bg-black">
-              {[{l:'1m',v:1},{l:'30m',v:30},{l:'45m',v:45},{l:'1h',v:60},{l:'90m',v:90}].map(o=><button key={o.v} onClick={()=>setIntervalMinutes(o.v)} className={`p-4 font-mono font-bold transition ${intervalMinutes===o.v?'bg-black text-white':'bg-white hover:bg-neutral-100'}`}>{o.l}</button>)}
-            </div>
+      <div className="border-4 border-black bg-[#FAFAF7] fade-up">
+        {/* Masthead */}
+        <div className="text-center border-b-4 border-black p-8 sm:p-10">
+          <div style={{ ...mono(10, { letterSpacing: '0.3em' }), color: '#CC0000', marginBottom: 8 }}>
+            Vol. 2 · Wellness Edition · {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
           </div>
-          <div className="border-2 border-black p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="border-2 border-black p-3"><Camera className="w-6 h-6" strokeWidth={1.5}/></div>
-                <div><div className="font-bold" style={{fontFamily:"'Playfair Display',serif"}}>Camera Verification</div><div className="text-xs font-mono uppercase text-[#CC0000]">{advancedMode?'Active':'Off'}</div></div>
-              </div>
-              <button onClick={()=>setAdvancedMode(!advancedMode)} className={`w-14 h-7 border-2 border-black relative ${advancedMode?'bg-black':'bg-white'}`}><div className={`absolute top-0.5 left-0.5 w-5 h-5 border border-black transition ${advancedMode?'translate-x-7 bg-white':'bg-black'}`}/></button>
-            </div>
-          </div>
-          <Btn onClick={startApp} primary icon={Play}>Start Session</Btn>
-          <Btn onClick={()=>setMode('settings')} icon={Settings}>Sound Config</Btn>
+          <h1 className="text-5xl sm:text-7xl font-bold leading-[0.9] tracking-tight mb-3" style={serif}>StretchCheck</h1>
+          <p style={{ ...mono(11, { letterSpacing: '0.2em' }), color: '#999' }}>Your Desktop Wellness Companion</p>
         </div>
-        <div className="text-center mt-8 pt-6 border-t border-black"><p className="text-xs font-mono text-neutral-500">Ed. 1.0 | <span className="text-[#CC0000]">{new Date().toLocaleDateString()}</span></p></div>
 
-        <div className="mt-12 pt-8 border-t-4 border-black">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-black mb-2" style={{fontFamily:"'Playfair Display',serif"}}>Health & Wellness Gazette</h2>
-            <p className="text-xs font-mono uppercase tracking-widest text-[#CC0000]">Featured Articles</p>
-          </div>
-          <div className="grid grid-cols-2 gap-px bg-black border-2 border-black">
-            <div className="bg-white p-6">
-              <div className="text-xs font-mono uppercase tracking-wide text-[#CC0000] mb-2">Workplace Health</div>
-              <h3 className="text-xl font-bold mb-3 leading-tight" style={{fontFamily:"'Playfair Display',serif"}}>The Silent Epidemic of Desk Jobs</h3>
-              <p className="text-sm leading-relaxed mb-3" style={{fontFamily:"'Lora',serif"}}>Studies show that prolonged sitting increases risk of cardiovascular disease by <span className="text-[#CC0000] font-semibold">147%</span>. Regular movement breaks every <span className="text-[#CC0000] font-semibold">30-45 minutes</span> can dramatically reduce these risks.</p>
-              <div className="text-xs font-mono text-neutral-500">— Medical Journal, <span className="text-[#CC0000]">2024</span></div>
+        <div className="p-8 sm:p-10 space-y-8">
+          {/* Streak */}
+          {streak > 0 && (
+            <div className="border-2 border-black bg-[#FFF8F0] p-5 flex items-center justify-between fade-up">
+              <div className="flex items-center gap-4">
+                <div className="text-3xl">🔥</div>
+                <div>
+                  <div style={{ ...mono(10), color: '#CC0000' }}>Current Streak</div>
+                  <div className="text-2xl font-bold" style={serif}>{streak} {streak === 1 ? 'Day' : 'Days'}</div>
+                </div>
+              </div>
+              <button onClick={handleShare} className="border-2 border-black p-3 hover:bg-black hover:text-white transition-all">
+                <Share2 className="w-5 h-5" strokeWidth={1.5} />
+              </button>
             </div>
-            <div className="bg-white p-6">
-              <div className="text-xs font-mono uppercase tracking-wide text-[#CC0000] mb-2">Ergonomics</div>
-              <h3 className="text-xl font-bold mb-3 leading-tight" style={{fontFamily:"'Playfair Display',serif"}}>Why Your Posture Matters</h3>
-              <p className="text-sm leading-relaxed mb-3" style={{fontFamily:"'Lora',serif"}}>Poor posture while working from home leads to chronic neck and back pain in <span className="text-[#CC0000] font-semibold">80%</span> of remote workers. Simple stretches can prevent long-term damage.</p>
-              <div className="text-xs font-mono text-neutral-500">— Ergonomics <span className="text-[#CC0000]">Today</span></div>
-            </div>
-            <div className="bg-white p-6 border-t-2 border-black">
-              <div className="text-xs font-mono uppercase tracking-wide text-[#CC0000] mb-2">Movement Science</div>
-              <h3 className="text-xl font-bold mb-3 leading-tight" style={{fontFamily:"'Playfair Display',serif"}}>15 Seconds to Better Health</h3>
-              <p className="text-sm leading-relaxed mb-3" style={{fontFamily:"'Lora',serif"}}>Research confirms that micro-breaks as short as <span className="text-[#CC0000] font-semibold">15 seconds</span> can reset muscle tension and improve circulation. Consistency matters more than duration.</p>
-              <div className="text-xs font-mono text-neutral-500">— Sports Medicine <span className="text-[#CC0000]">Review</span></div>
-            </div>
-            <div className="bg-white p-6 border-t-2 border-black">
-              <div className="text-xs font-mono uppercase tracking-wide text-[#CC0000] mb-2">Remote Work</div>
-              <h3 className="text-xl font-bold mb-3 leading-tight" style={{fontFamily:"'Playfair Display',serif"}}>The WFH Revolution's Hidden Cost</h3>
-              <p className="text-sm leading-relaxed mb-3" style={{fontFamily:"'Lora',serif"}}>Remote workers report <span className="text-[#CC0000] font-semibold">54% increase</span> in sedentary behavior. Experts recommend structured movement routines to combat the "desk anchor" effect.</p>
-              <div className="text-xs font-mono text-neutral-500">— Remote Work <span className="text-[#CC0000]">Weekly</span></div>
+          )}
+
+          {/* Interval */}
+          <div className="fade-up fade-up-d1">
+            <label className="block mb-3" style={mono(10)}>Reminder Interval</label>
+            <div className="grid grid-cols-5 gap-px bg-black border-2 border-black">
+              {[{ l: '15m', v: 15 }, { l: '30m', v: 30 }, { l: '45m', v: 45 }, { l: '1h', v: 60 }, { l: '90m', v: 90 }].map(o => (
+                <button key={o.v} onClick={() => setIntervalMinutes(o.v)}
+                  className={`p-3 sm:p-4 font-bold text-sm transition-all ${intervalMinutes === o.v ? 'bg-black text-white' : 'bg-white hover:bg-neutral-50'}`}
+                  style={{ fontFamily: "'JetBrains Mono', monospace" }}>{o.l}</button>
+              ))}
             </div>
           </div>
-          <div className="mt-6 border-2 border-black bg-neutral-50 p-8">
-            <div className="text-center mb-4">
-              <div className="text-xs font-mono uppercase tracking-widest text-[#CC0000] mb-2">Editor's Note</div>
-              <h3 className="text-2xl font-bold" style={{fontFamily:"'Playfair Display',serif"}}>Motion is Medicine</h3>
+
+          {/* Hydration */}
+          <div className="border-2 border-black fade-up fade-up-d2">
+            <div className="p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Droplets className="w-5 h-5 text-[#0ea5e9]" strokeWidth={1.5} />
+                <div>
+                  <div className="font-bold text-sm">Hydration Reminders</div>
+                  <div style={{ ...mono(10), color: '#999' }}>
+                    {hydrationEnabled ? `Every ${hydrationIntervalMin}min · Goal: ${hydrationGoal} glasses` : 'Disabled'}
+                  </div>
+                </div>
+              </div>
+              <Toggle enabled={hydrationEnabled} onToggle={() => setHydrationEnabled(!hydrationEnabled)} activeColor="#0ea5e9" />
             </div>
-            <p className="text-base leading-relaxed text-center max-w-2xl mx-auto" style={{fontFamily:"'Lora',serif"}}>
-              In an era where knowledge work chains us to our desks, the simple act of standing and stretching becomes revolutionary. StretchCheck isn't just an app—it's a movement against the sedentary crisis plaguing modern workers.
+            {hydrationEnabled && (
+              <div className="border-t border-neutral-200 p-5 space-y-4">
+                <div>
+                  <label className="block mb-2" style={mono(10)}>Remind Every</label>
+                  <div className="grid grid-cols-4 gap-px bg-black border-2 border-black">
+                    {[{ l: '30m', v: 30 }, { l: '45m', v: 45 }, { l: '1h', v: 60 }, { l: '90m', v: 90 }].map(o => (
+                      <button key={o.v} onClick={() => setHydrationIntervalMin(o.v)}
+                        className={`p-2 font-bold text-xs transition-all ${hydrationIntervalMin === o.v ? 'bg-[#0ea5e9] text-white' : 'bg-white hover:bg-neutral-50'}`}
+                        style={{ fontFamily: "'JetBrains Mono', monospace" }}>{o.l}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block mb-2" style={mono(10)}>Daily Goal (glasses)</label>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setHydrationGoal(Math.max(1, hydrationGoal - 1))}
+                      className="border-2 border-black p-2 hover:bg-black hover:text-white transition-all"><Minus className="w-4 h-4" strokeWidth={2} /></button>
+                    <div className="text-2xl font-bold flex-1 text-center" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{hydrationGoal}</div>
+                    <button onClick={() => setHydrationGoal(Math.min(20, hydrationGoal + 1))}
+                      className="border-2 border-black p-2 hover:bg-black hover:text-white transition-all"><Plus className="w-4 h-4" strokeWidth={2} /></button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Buttons */}
+          <div className="space-y-3 fade-up fade-up-d3">
+            <Btn onClick={startApp} primary icon={Play}>Start Session</Btn>
+            <div className="grid grid-cols-2 gap-3">
+              <Btn onClick={() => setMode('settings')} icon={Settings}>Sound</Btn>
+              <Btn onClick={() => setMode('stats')} icon={BarChart3}>Stats</Btn>
+            </div>
+          </div>
+        </div>
+
+        {/* BREATHING */}
+        <div className="border-t-4 border-black p-8 sm:p-10">
+          <div className="text-center mb-6">
+            <div style={{ ...mono(10, { letterSpacing: '0.3em' }), color: '#CC0000', marginBottom: 4 }}>Quick Mental Reset</div>
+            <h2 className="text-2xl font-bold" style={serif}>Breathing Exercises</h2>
+          </div>
+          <div className="space-y-3">
+            {BREATHING_EXERCISES.map(ex => (
+              <button key={ex.id} onClick={() => startBreathing(ex)}
+                className="w-full border-2 border-black bg-white p-5 text-left hover:bg-neutral-50 transition-all group">
+                <div className="flex items-start gap-4">
+                  <div className="text-3xl flex-shrink-0 mt-1">{ex.emoji}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-bold text-base" style={serif}>{ex.name}</span>
+                      <span style={{ ...mono(10), color: '#CC0000' }}>{ex.pattern.filter(p => p > 0).join('-')}</span>
+                    </div>
+                    <div className="text-sm text-neutral-600 mb-2">{ex.description}</div>
+                    <div className="px-2 py-1 bg-neutral-100 border border-neutral-200 inline-block" style={mono(9)}>
+                      {ex.context}
+                    </div>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-neutral-300 group-hover:text-black transition-colors flex-shrink-0 mt-2" strokeWidth={1.5} />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* GAZETTE */}
+        <div className="border-t-4 border-black p-8 sm:p-10">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold" style={serif}>Health & Wellness Gazette</h2>
+            <div style={{ ...mono(10, { letterSpacing: '0.3em' }), color: '#CC0000', marginTop: 4 }}>Featured Articles</div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-black border-2 border-black">
+            {[
+              { cat: "Workplace Health", title: "The Silent Epidemic of Desk Jobs", body: "Prolonged sitting increases cardiovascular disease risk significantly. Regular movement breaks every 30–45 minutes can dramatically reduce these risks.", cite: "Medical Journal, 2024" },
+              { cat: "Ergonomics", title: "Why Your Posture Matters", body: "Poor posture while working from home leads to chronic pain in a majority of remote workers. Simple stretches can prevent long-term damage.", cite: "Ergonomics Today" },
+              { cat: "Movement Science", title: "15 Seconds to Better Health", body: "Micro-breaks as short as 15 seconds can reset muscle tension and improve circulation. Consistency matters more than duration.", cite: "Sports Medicine Review" },
+              { cat: "Hydration", title: "Water: The Forgotten Productivity Hack", body: "Even mild dehydration reduces cognitive performance and increases fatigue. Drinking water consistently throughout the day improves focus and reduces headaches.", cite: "Nutrition Research Quarterly" },
+            ].map((a, i) => (
+              <div key={i} className="bg-white p-6">
+                <div style={{ ...mono(10), color: '#CC0000', marginBottom: 8 }}>{a.cat}</div>
+                <h3 className="text-lg font-bold mb-2 leading-tight" style={serif}>{a.title}</h3>
+                <p className="text-sm leading-relaxed text-neutral-600 mb-3">{a.body}</p>
+                <div style={{ ...mono(10), color: '#aaa' }}>— {a.cite}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 border-2 border-black bg-[#FFF8F0] p-8 text-center">
+            <div style={{ ...mono(10, { letterSpacing: '0.3em' }), color: '#CC0000', marginBottom: 8 }}>Editor's Note</div>
+            <h3 className="text-xl font-bold mb-3" style={serif}>Motion is Medicine</h3>
+            <p className="text-sm leading-relaxed text-neutral-600 max-w-xl mx-auto">
+              In an era where knowledge work chains us to our desks, the simple act of standing and stretching becomes revolutionary. StretchCheck isn't just an app — it's a movement against the sedentary crisis plaguing modern workers.
             </p>
-            <div className="text-center mt-6 pt-4 border-t border-neutral-300">
-              <div className="text-xs font-mono text-neutral-500">★ ★ ★</div>
-            </div>
+            <div className="text-neutral-300 mt-4">★ ★ ★</div>
           </div>
+        </div>
+
+        <div className="border-t-2 border-black p-4 text-center">
+          <p style={{ ...mono(10), color: '#aaa' }}>Ed. 2.0 · <span style={{ color: '#CC0000' }}>{STRETCHES.length} stretches</span> · {BREATHING_EXERCISES.length} breathing exercises · Built for humans who sit too much</p>
         </div>
       </div>
     </Shell>
   );
 
-  if(mode==='settings')return(
+  // ═════════════════════════════════════════════════════════════════════════
+  // SETTINGS
+  // ═════════════════════════════════════════════════════════════════════════
+  if (mode === 'settings') return (
     <Shell>
-      <div className="w-full max-w-2xl border-4 border-black bg-[#F9F9F7] p-12">
+      <div className="border-4 border-black bg-[#FAFAF7] p-8 sm:p-10 fade-up">
         <div className="flex items-center gap-4 border-b-4 border-black pb-6 mb-8">
-          <button onClick={()=>setMode('Home')} className="border-2 border-black p-2 hover:bg-black hover:text-white transition"><ChevronLeft className="w-6 h-6" strokeWidth={2}/></button>
-          <div><div className="text-xs font-mono tracking-widest uppercase text-[#CC0000]">Config</div><h1 className="text-4xl font-black" style={{fontFamily:"'Playfair Display',serif"}}>Settings</h1></div>
+          <button onClick={() => setMode('setup')} className="border-2 border-black p-2 hover:bg-black hover:text-white transition-all">
+            <ChevronLeft className="w-5 h-5" strokeWidth={2} />
+          </button>
+          <div>
+            <div style={{ ...mono(10), color: '#CC0000' }}>Configuration</div>
+            <h1 className="text-3xl font-bold" style={serif}>Sound Settings</h1>
+          </div>
         </div>
         <div className="space-y-8">
           <div>
-            <label className="block text-xs font-mono uppercase tracking-widest mb-3">Sound Style</label>
-            <div className="grid grid-cols-2 gap-px bg-black">
-              {[{s:'chime',i:Bell,l:'Chime'},{s:'bell',i:Bell,l:'Bell'},{s:'gentle',i:Sparkles,l:'Gentle'},{s:'silent',i:VolumeX,l:'Silent'}].map(({s,i:I,l})=><button key={s} onClick={()=>{setSoundStyle(s);setTimeout(playSound,100);}} className={`p-5 transition flex items-center justify-center gap-3 ${soundStyle===s?'bg-black text-white':'bg-white hover:bg-neutral-100'}`}><I className="w-5 h-5" strokeWidth={1.5}/><span className="font-mono font-bold text-sm">{l}</span></button>)}
+            <label className="block mb-3" style={mono(10)}>Sound Style</label>
+            <div className="grid grid-cols-3 gap-px bg-black border-2 border-black">
+              {[
+                { s: 'bell', i: Bell, l: 'Bell' },
+                { s: 'marimba', i: Sparkles, l: 'Marimba' },
+                { s: 'notification', i: Bell, l: 'Alert' },
+                { s: 'gentle', i: Volume2, l: 'Gentle' },
+                { s: 'annoying', i: Zap, l: 'Urgent' },
+                { s: 'silent', i: VolumeX, l: 'Silent' },
+              ].map(({ s, i: I, l }) => (
+                <button key={s} onClick={() => { setSoundStyle(s); setTimeout(playSound, 100); }}
+                  className={`p-4 transition-all flex items-center justify-center gap-2 ${soundStyle === s ? 'bg-black text-white' : 'bg-white hover:bg-neutral-50'}`}>
+                  <I className="w-4 h-4" strokeWidth={1.5} />
+                  <span className="font-bold" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>{l}</span>
+                </button>
+              ))}
             </div>
           </div>
-          {soundStyle!=='silent'&&(
+          {soundStyle !== 'silent' && (
             <div>
-              <div className="flex justify-between mb-3"><label className="text-xs font-mono uppercase tracking-widest">Volume</label><span className="font-mono font-bold text-[#CC0000]">{Math.round(soundVolume*100)}%</span></div>
+              <div className="flex justify-between mb-3">
+                <label style={mono(10)}>Volume</label>
+                <span className="font-bold text-sm" style={{ fontFamily: "'JetBrains Mono', monospace", color: '#CC0000' }}>{Math.round(soundVolume * 100)}%</span>
+              </div>
               <div className="flex items-center gap-4">
-                <VolumeX className="w-5 h-5" strokeWidth={1.5}/>
-                <input type="range" min="0" max="1" step="0.1" value={soundVolume} onChange={e=>setSoundVolume(parseFloat(e.target.value))} className="flex-1 h-2 bg-neutral-200 border border-black"/>
-                <Volume2 className="w-5 h-5" strokeWidth={1.5}/>
+                <VolumeX className="w-4 h-4 text-neutral-400" strokeWidth={1.5} />
+                <input type="range" min="0" max="1" step="0.1" value={soundVolume} onChange={e => setSoundVolume(parseFloat(e.target.value))} className="flex-1" />
+                <Volume2 className="w-4 h-4" strokeWidth={1.5} />
               </div>
             </div>
           )}
         </div>
-        <div className="mt-8"><Btn onClick={()=>setMode('setup')} primary>Save</Btn></div>
+        <div className="mt-8"><Btn onClick={() => setMode('setup')} primary>Save & Back</Btn></div>
       </div>
     </Shell>
   );
 
-  if(mode==='running'){
-    const prog=((intervalMinutes*60-timeLeft)/(intervalMinutes*60))*100;
-    return(
+  // ═════════════════════════════════════════════════════════════════════════
+  // STATS
+  // ═════════════════════════════════════════════════════════════════════════
+  if (mode === 'stats') {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const maxW = Math.max(...weeklyData, 1);
+    const areaCounts = {};
+    sessionHistory.forEach(h => { areaCounts[h.area] = (areaCounts[h.area] || 0) + 1; });
+    const hydPct = hydrationGoal > 0 ? Math.min(100, Math.round((hydrationCount / hydrationGoal) * 100)) : 0;
+
+    return (
       <Shell>
-        <div className="w-full max-w-2xl border-4 border-black bg-[#F9F9F7]">
-          <div className="border-b-4 border-black bg-black text-white p-6 text-center">
-            <div className="text-xs font-mono tracking-widest uppercase mb-2 text-[#CC0000]">Active</div>
-            <div className="text-2xl font-black" style={{fontFamily:"'Playfair Display',serif"}}>NEXT STRETCH</div>
-          </div>
-          <div className="p-12">
-            <div className="text-center mb-8">
-              <div className="text-8xl font-black font-mono tracking-tighter leading-none mb-4">{formatTime(timeLeft)}</div>
-              <div className="h-8 border-2 border-black overflow-hidden relative"><div className="absolute inset-0 bg-black transition-all duration-1000" style={{width:`${prog}%`}}/></div>
-            </div>
-            <div className="border-2 border-black p-6 mb-8 flex items-center justify-between">
-              <div><div className="text-xs font-mono uppercase text-[#CC0000]">Today</div><div className="text-6xl font-black font-mono">{stretchCount}</div></div>
-              <div className="border-2 border-black p-4"><TrendingUp className="w-12 h-12" strokeWidth={1.5}/></div>
-            </div>
-            <div className="space-y-3">
-              <button onClick={()=>setIsRunning(!isRunning)} className={`w-full py-4 font-bold text-sm uppercase tracking-widest transition flex items-center justify-center gap-2 ${isRunning?'bg-[#CC0000] text-white border-2 border-[#CC0000]':'bg-black text-white border-2 border-black hover:bg-white hover:text-black'}`}>
-                {isRunning?<><Pause className="w-5 h-5" strokeWidth={2}/>Pause</>:<><Play className="w-5 h-5" strokeWidth={2}/>Resume</>}
+        <div className="border-4 border-black bg-[#FAFAF7] fade-up">
+          <div className="border-b-4 border-black p-8 sm:p-10">
+            <div className="flex items-center gap-4">
+              <button onClick={() => setMode('setup')} className="border-2 border-black p-2 hover:bg-black hover:text-white transition-all">
+                <ChevronLeft className="w-5 h-5" strokeWidth={2} />
               </button>
-              <Btn onClick={()=>setMode('setup')} icon={Settings}>Setup</Btn>
+              <div>
+                <div style={{ ...mono(10), color: '#CC0000' }}>Dashboard</div>
+                <h1 className="text-3xl font-bold" style={serif}>Your Stats</h1>
+              </div>
+            </div>
+          </div>
+          <div className="p-8 sm:p-10 space-y-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-black border-2 border-black">
+              {[
+                { label: 'Stretches', value: stretchCount, icon: '💪' },
+                { label: 'Minutes', value: Math.round(totalSeconds / 60), icon: '⏱️' },
+                { label: 'Streak', value: `${streak}d`, icon: '🔥' },
+                { label: 'Water', value: `${hydrationCount}/${hydrationGoal}`, icon: '💧' },
+              ].map((m, i) => (
+                <div key={i} className="bg-white p-5 text-center">
+                  <div className="text-2xl mb-1">{m.icon}</div>
+                  <div className="text-2xl font-bold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{m.value}</div>
+                  <div style={{ ...mono(10), color: '#999', marginTop: 4 }}>{m.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Hydration bar */}
+            <div className="border-2 border-black p-5">
+              <div className="flex items-center justify-between mb-3">
+                <span style={{ ...mono(10), color: '#0ea5e9' }}>Hydration Today</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 'bold' }}>{hydPct}%</span>
+              </div>
+              <div className="h-5 border border-black bg-neutral-100 relative overflow-hidden">
+                <div className="absolute inset-y-0 left-0 bg-[#0ea5e9] transition-all duration-500" style={{ width: `${hydPct}%` }} />
+              </div>
+              <div className="flex justify-between mt-2">
+                <span style={{ ...mono(10), color: '#aaa' }}>{hydrationCount} glasses</span>
+                <span style={{ ...mono(10), color: '#aaa' }}>Goal: {hydrationGoal}</span>
+              </div>
+            </div>
+
+            {/* Weekly */}
+            <div className="border-2 border-black p-6">
+              <div style={{ ...mono(10), color: '#CC0000', marginBottom: 16 }}>This Week — Stretches</div>
+              <div className="flex items-end justify-between gap-2" style={{ height: 120 }}>
+                {weeklyData.map((count, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                    <div style={{ ...mono(10), fontWeight: 'bold' }}>{count > 0 ? count : ''}</div>
+                    <div className="w-full transition-all duration-500" style={{
+                      height: `${Math.max((count / maxW) * 80, count > 0 ? 8 : 2)}px`,
+                      backgroundColor: i === new Date().getDay() ? '#CC0000' : count > 0 ? '#1a1a1a' : '#e5e5e5',
+                    }} />
+                    <div style={{ ...mono(10), fontWeight: i === new Date().getDay() ? 'bold' : 'normal', color: i === new Date().getDay() ? '#CC0000' : '#aaa' }}>{days[i]}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Area breakdown */}
+            {Object.keys(areaCounts).length > 0 && (
+              <div className="border-2 border-black p-6">
+                <div style={{ ...mono(10), color: '#CC0000', marginBottom: 16 }}>Area Breakdown</div>
+                <div className="space-y-3">
+                  {Object.entries(areaCounts).sort((a, b) => b[1] - a[1]).map(([area, count]) => {
+                    const total = Object.values(areaCounts).reduce((a, b) => a + b, 0);
+                    return (
+                      <div key={area} className="flex items-center gap-3">
+                        <div className="w-20" style={{ ...mono(10), fontWeight: 'bold' }}>{AREA_LABELS[area] || area}</div>
+                        <div className="flex-1 h-5 bg-neutral-100 border border-black relative overflow-hidden">
+                          <div className="absolute inset-y-0 left-0 bg-black transition-all duration-500" style={{ width: `${(count / total) * 100}%` }} />
+                        </div>
+                        <div className="w-8 text-right" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 'bold' }}>{count}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <Btn onClick={handleShare} icon={Share2}>Share</Btn>
+              <Btn onClick={resetStats} icon={RotateCcw}>Reset</Btn>
             </div>
           </div>
         </div>
@@ -209,65 +775,212 @@ export default function App(){
     );
   }
 
-  if(mode==='reminder')return(
-    <>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@700;900&family=Lora:wght@400&display=swap');body{background:#F9F9F7;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Cpath fill='%23111' fill-opacity='0.04' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'/%3E%3C/svg%3E")}*{border-radius:0!important}@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}.ticker-content{animation:scroll 30s linear infinite;display:inline-flex;white-space:nowrap}.ticker-wrapper{flex:1;overflow:hidden;position:relative}`}</style>
-      <div className="min-h-screen" style={{fontFamily:'Inter,sans-serif'}}>
-        <div className="w-full bg-black text-white border-b-4 border-black py-3 overflow-hidden">
-          <div className="flex items-center">
-            <div className="bg-[#CC0000] px-6 py-2 font-bold text-xs uppercase tracking-widest flex-shrink-0 mr-4">Breaking News</div>
-            <div className="ticker-wrapper">
-              <div className="ticker-content">
-                <span className="mx-6 text-sm font-mono">★ STUDY: <span className="text-[#CC0000]">73%</span> of remote workers forget to stretch during video calls</span>
-                <span className="mx-6 text-sm font-mono">★ BREAKING: Local developer discovers standing desk <span className="text-[#CC0000]">actually requires standing</span></span>
-                <span className="mx-6 text-sm font-mono">★ WFH ALERT: Your cat judging you for <span className="text-[#CC0000]">poor posture</span>, experts say</span>
-                <span className="mx-6 text-sm font-mono">★ URGENT: Coffee run doesn't count as <span className="text-[#CC0000]">cardio</span>, scientists confirm</span>
-                <span className="mx-6 text-sm font-mono">★ EXCLUSIVE: Couch ≠ <span className="text-[#CC0000]">Ergonomic chair</span>, survey finds</span>
-                <span className="mx-6 text-sm font-mono">★ REPORT: Pajama pants reduce stretch motivation by <span className="text-[#CC0000]">67%</span></span>
-                <span className="mx-6 text-sm font-mono">★ STUDY: <span className="text-[#CC0000]">73%</span> of remote workers forget to stretch during video calls</span>
-                <span className="mx-6 text-sm font-mono">★ BREAKING: Local developer discovers standing desk <span className="text-[#CC0000]">actually requires standing</span></span>
-              </div>
+  // ═════════════════════════════════════════════════════════════════════════
+  // RUNNING
+  // ═════════════════════════════════════════════════════════════════════════
+  if (mode === 'running') {
+    const prog = ((intervalMinutes * 60 - timeLeft) / (intervalMinutes * 60)) * 100;
+    return (
+      <Shell>
+        <div className="border-4 border-black bg-[#FAFAF7] fade-up">
+          {/* Header — white text on black bg */}
+          <div style={{ borderBottom: '4px solid #000', backgroundColor: '#000000', padding: '20px', textAlign: 'center' }}>
+            <div style={{ ...mono(10, { letterSpacing: '0.3em' }), color: isRunning ? '#CC0000' : '#666', marginBottom: 4 }}>
+              {isRunning ? '● Active' : '❚❚ Paused'}
             </div>
+            <div style={{ ...serif, fontSize: 20, fontWeight: 'bold', color: '#ffffff' }}>Next Stretch In</div>
           </div>
-        </div>
-        <div className="flex items-center justify-center p-6">
-          <div className="w-full max-w-3xl border-4 border-black bg-[#F9F9F7]">
-            <div className="border-b-4 border-black bg-[#CC0000] text-white p-6 text-center">
-              <div className="text-xs font-mono tracking-widest uppercase mb-2 text-white">Health Alert</div>
-              <h1 className="text-5xl font-black leading-tight text-white" style={{fontFamily:"'Playfair Display',serif"}}>TIME TO STRETCH</h1>
-            </div>
-            <div className="p-12">
-              <div className="border-b-2 border-black pb-6 mb-6">
-                <h2 className="text-4xl font-bold mb-3" style={{fontFamily:"'Playfair Display',serif"}}>{currentStretch.name}</h2>
-                <div className="text-xs font-mono uppercase text-neutral-600">Fig. {currentStretch.id} • <span className="text-[#CC0000]">{currentStretch.duration}s</span></div>
+          <div className="p-8 sm:p-10">
+            <div className="text-center mb-8">
+              <div className="text-7xl sm:text-8xl font-bold tracking-tighter leading-none mb-4"
+                style={{ fontFamily: "'JetBrains Mono', monospace" }}>{formatTime(timeLeft)}</div>
+              <div className="h-6 border-2 border-black overflow-hidden relative bg-neutral-100">
+                <div className="absolute inset-0 bg-black transition-all duration-1000" style={{ width: `${prog}%` }} />
               </div>
-              <div className="mb-6 border-2 border-black flex items-center justify-center bg-neutral-200">
-                {currentStretch.videoUrl ? (
-                  <video 
-                    src={currentStretch.videoUrl} 
-                    autoPlay 
-                    loop 
-                    muted 
-                    className="w-full h-auto"
-                    style={{maxHeight: '400px', objectFit: 'contain'}}
-                  />
-                ) : (
-                  <div className="grayscale p-20">
-                    <div className="text-9xl">{currentStretch.fallbackEmoji}</div>
+            </div>
+
+            {/* Stats row with hydration timer */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="border-2 border-black p-4">
+                <div style={{ ...mono(10), color: '#CC0000' }}>Stretches</div>
+                <div className="text-4xl font-bold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{stretchCount}</div>
+                <div style={{ ...mono(10), color: '#aaa', marginTop: 4 }}>{Math.round(totalSeconds / 60)} min total</div>
+              </div>
+              <div className="border-2 border-black p-4">
+                <div style={{ ...mono(10), color: '#0ea5e9' }}>Water</div>
+                <div className="text-4xl font-bold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                  {hydrationCount}<span style={{ fontSize: 18, color: '#aaa' }}>/{hydrationGoal}</span>
+                </div>
+                {hydrationEnabled && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                    <Droplets className="w-3 h-3 text-[#0ea5e9]" strokeWidth={2} />
+                    <span style={{ ...mono(10), color: '#0ea5e9' }}>{formatTime(hydrationTimeLeft)}</span>
                   </div>
                 )}
               </div>
-              <div className="border-2 border-black p-6 mb-8"><p className="text-base leading-relaxed" style={{fontFamily:"'Lora',serif"}}>{currentStretch.description}</p></div>
-              <div className="grid grid-cols-2 gap-px bg-black">
-                <button onClick={completeStretch} className="bg-black text-white py-4 font-bold text-sm uppercase tracking-widest hover:bg-neutral-900 transition flex items-center justify-center gap-2 col-span-2"><Check className="w-5 h-5" strokeWidth={2}/>Complete</button>
-                <button onClick={skipStretch} className="bg-white py-3 font-mono text-xs uppercase tracking-widest hover:bg-neutral-100 transition flex items-center justify-center gap-2 col-span-2 border-t-2 border-black"><X className="w-4 h-4"/>Skip</button>
+            </div>
+
+            {streak > 0 && (
+              <div className="border-2 border-black p-3 mb-6 flex items-center justify-center gap-2 bg-[#FFF8F0]">
+                <span className="text-lg">🔥</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 'bold' }}>{streak} day streak</span>
               </div>
+            )}
+
+            <div className="space-y-3">
+              <button onClick={() => setIsRunning(!isRunning)}
+                className={`w-full py-4 font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2
+                  ${isRunning ? 'bg-[#CC0000] text-white border-2 border-[#CC0000] hover:bg-[#990000]' : 'bg-black text-white border-2 border-black hover:bg-white hover:text-black'}`}>
+                {isRunning ? <><Pause className="w-5 h-5" strokeWidth={2} />Pause</> : <><Play className="w-5 h-5" strokeWidth={2} />Resume</>}
+              </button>
+              <div className="grid grid-cols-3 gap-3">
+                <Btn onClick={() => setMode('setup')} small icon={Settings}>Setup</Btn>
+                <Btn onClick={() => setMode('stats')} small icon={BarChart3}>Stats</Btn>
+                <Btn onClick={() => triggerReminder()} small icon={Zap}>Now</Btn>
+              </div>
+              {hydrationEnabled && (
+                <button onClick={logWater}
+                  className="w-full py-3 font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 border-2 border-[#0ea5e9] text-[#0ea5e9] bg-white hover:bg-[#0ea5e9] hover:text-white">
+                  <Droplets className="w-4 h-4" strokeWidth={2} />Log Water ({hydrationCount}/{hydrationGoal})
+                </button>
+              )}
             </div>
           </div>
         </div>
-      </div>
-    </>
-  );
+      </Shell>
+    );
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // REMINDER — S3 videos with onError fallback
+  // ═════════════════════════════════════════════════════════════════════════
+  if (mode === 'reminder' && currentStretch) {
+    const sProg = currentStretch.duration > 0 ? ((currentStretch.duration - stretchTimeLeft) / currentStretch.duration) * 100 : 0;
+    return (
+      <Shell>
+        <div className="border-4 border-black bg-[#FAFAF7] fade-up">
+          {/* HEADER — forced black text on red so it's always visible */}
+          <div style={{ borderBottom: '4px solid #000', backgroundColor: '#CC0000', padding: '24px', textAlign: 'center' }}>
+            <div style={{ ...mono(10, { letterSpacing: '0.3em' }), color: '#000000', marginBottom: 4 }}>⚡ HEALTH ALERT</div>
+            <h1 style={{ ...serif, fontSize: 36, fontWeight: 'bold', color: '#000000', margin: 0, lineHeight: 1.1 }}>TIME TO STRETCH</h1>
+          </div>
+
+          <div className="p-8 sm:p-10">
+            <div className="border-b-2 border-black pb-5 mb-6">
+              <h2 className="text-3xl font-bold mb-1" style={serif}>{currentStretch.name}</h2>
+              <div className="flex items-center gap-3 flex-wrap">
+                <span style={{ ...mono(10), color: '#999' }}>Fig. {currentStretch.id}</span>
+                <span className="px-2 py-0.5 border border-black" style={mono(10)}>{AREA_LABELS[currentStretch.area]}</span>
+                <span style={{ ...mono(10), color: '#CC0000' }}>{currentStretch.duration}s</span>
+              </div>
+            </div>
+
+            {/* Video with fallback */}
+            <div className="mb-6 border-2 border-black bg-neutral-100 overflow-hidden flex items-center justify-center">
+              <StretchVideo videoUrl={currentStretch.videoUrl} fallbackEmoji={currentStretch.fallbackEmoji} />
+            </div>
+
+            <div className="border-2 border-black p-5 mb-6 bg-[#FFF8F0]">
+              <p className="text-sm leading-relaxed">{currentStretch.description}</p>
+            </div>
+
+            {/* Guided timer */}
+            <div className="border-2 border-black p-5 mb-6 text-center">
+              <div style={{ ...mono(10), color: '#999', marginBottom: 12 }}>
+                {stretchTimerActive ? 'Stretching…' : stretchTimeLeft === 0 ? '✓ Done!' : 'Guided Timer'}
+              </div>
+              <div className="text-5xl font-bold mb-3" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{stretchTimeLeft}s</div>
+              <div className="h-3 border border-black overflow-hidden relative bg-neutral-100 mb-4">
+                <div className="absolute inset-0 transition-all duration-1000"
+                  style={{ width: `${sProg}%`, backgroundColor: stretchTimeLeft === 0 ? '#22c55e' : '#CC0000' }} />
+              </div>
+              {!stretchTimerActive && stretchTimeLeft > 0 && (
+                <button onClick={() => setStretchTimerActive(true)}
+                  className="border-2 border-black px-6 py-2 font-bold hover:bg-black hover:text-white transition-all"
+                  style={{ ...mono(11), cursor: 'pointer' }}>
+                  <Play className="w-4 h-4 inline mr-2" strokeWidth={2} />START TIMER
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <button onClick={completeStretch}
+                className="w-full bg-black text-white py-4 font-bold text-sm uppercase tracking-widest hover:bg-neutral-800 transition-all flex items-center justify-center gap-2">
+                <Check className="w-5 h-5" strokeWidth={2} />Complete
+              </button>
+              <button onClick={skipStretch}
+                className="w-full bg-white py-3 hover:bg-neutral-100 transition-all flex items-center justify-center gap-2 border-2 border-neutral-300"
+                style={{ ...mono(11), cursor: 'pointer' }}>
+                <X className="w-4 h-4" />SKIP THIS TIME
+              </button>
+            </div>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // BREATHING
+  // ═════════════════════════════════════════════════════════════════════════
+  if (mode === 'breathing' && breathingExercise) {
+    const ex = breathingExercise;
+    const label = ex.labels[breathPhase] || '';
+    const isInhale = label.toLowerCase() === 'inhale';
+    const isExhale = label.toLowerCase() === 'exhale';
+    const phaseColor = isInhale ? ex.color : isExhale ? '#1a1a1a' : '#888';
+
+    return (
+      <Shell>
+        <div className="border-4 border-black bg-[#FAFAF7] fade-up">
+          <div style={{ borderBottom: '4px solid #000', backgroundColor: '#1a1a1a', padding: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ ...mono(10, { letterSpacing: '0.3em' }), color: '#999' }}>{ex.emoji} Breathing</div>
+                <div style={{ ...serif, fontSize: 20, fontWeight: 'bold', color: '#ffffff' }}>{ex.name}</div>
+              </div>
+              <button onClick={stopBreathing} style={{ border: '2px solid rgba(255,255,255,0.3)', background: 'none', color: '#fff', padding: 8, cursor: 'pointer' }}>
+                <X className="w-5 h-5" strokeWidth={2} />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-8 sm:p-12 text-center">
+            <div className="mb-6 px-3 py-2 bg-neutral-100 border border-neutral-200 inline-block" style={mono(9)}>{ex.context}</div>
+
+            <div className="relative inline-flex items-center justify-center mb-6">
+              <div style={{
+                width: 224, height: 224, border: `4px solid ${phaseColor}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'transform 1s ease, border-color 0.5s',
+                transform: isInhale ? 'scale(1.1)' : isExhale ? 'scale(0.9)' : 'scale(1)',
+              }}>
+                <div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 56, fontWeight: 'bold', color: phaseColor }}>{breathSecondsLeft}</div>
+                  <div style={{ fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.15em', fontSize: 14, color: phaseColor }}>{label}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-center gap-1 mb-4">
+              {ex.pattern.map((p, i) => p > 0 && (
+                <div key={i} style={{ height: 6, transition: 'all 0.3s', width: i === breathPhase ? 32 : 16, backgroundColor: i === breathPhase ? ex.color : '#e5e5e5' }} />
+              ))}
+            </div>
+
+            <div style={{ ...mono(12), color: '#999', marginBottom: 16 }}>Cycle {breathCycles + 1}</div>
+
+            <div className="border-2 border-black p-5 mb-6 bg-[#FFF8F0] text-left">
+              <div style={{ ...mono(10), color: '#CC0000', marginBottom: 4 }}>💡 When to use this</div>
+              <p className="text-sm leading-relaxed text-neutral-700">{ex.tip}</p>
+            </div>
+
+            <Btn onClick={stopBreathing} icon={Check}>Done</Btn>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
 
   return null;
 }
