@@ -85,8 +85,8 @@ const Toggle = ({ enabled, onToggle, activeColor = '#000' }) => (
   </button>
 );
 
-// ─── VIDEO PLAYER WITH FALLBACK ──────────────────────────────────────────────
-const StretchVideo = ({ videoUrl, fallbackEmoji }) => {
+// ─── VIDEO PLAYER WITH FALLBACK (memoized to prevent re-render on timer tick) ─
+const StretchVideo = React.memo(({ videoUrl, fallbackEmoji }) => {
   const [videoFailed, setVideoFailed] = useState(false);
 
   if (!videoUrl || videoFailed) {
@@ -109,7 +109,7 @@ const StretchVideo = ({ videoUrl, fallbackEmoji }) => {
       style={{ width: '100%', height: 'auto', maxHeight: '400px', objectFit: 'contain', display: 'block' }}
     />
   );
-};
+});
 
 // ═════════════════════════════════════════════════════════════════════════════
 // MAIN APP
@@ -740,7 +740,7 @@ export default function App() {
     const prog = ((intervalMinutes * 60 - timeLeft) / (intervalMinutes * 60)) * 100;
     return (
       <Shell>
-        <div className="border-4 border-black bg-[#FAFAF7] fade-up">
+        <div className="border-4 border-black bg-[#FAFAF7]">
           {/* Header — white text on black bg */}
           <div style={{ borderBottom: '4px solid #000', backgroundColor: '#000000', padding: '20px', textAlign: 'center' }}>
             <div style={{ ...mono(10, { letterSpacing: '0.3em' }), color: isRunning ? '#CC0000' : '#666', marginBottom: 4 }}>
@@ -809,7 +809,7 @@ export default function App() {
     const sProg = currentStretch.duration > 0 ? ((currentStretch.duration - stretchTimeLeft) / currentStretch.duration) * 100 : 0;
     return (
       <Shell>
-        <div className="border-4 border-black bg-[#FAFAF7] fade-up">
+        <div className="border-4 border-black bg-[#FAFAF7]">
           {/* HEADER — forced black text on red so it's always visible */}
           <div style={{ borderBottom: '4px solid #000', backgroundColor: '#CC0000', padding: '24px', textAlign: 'center' }}>
             <div style={{ ...mono(10, { letterSpacing: '0.3em' }), color: '#000000', marginBottom: 4 }}>⚡ HEALTH ALERT</div>
@@ -826,9 +826,9 @@ export default function App() {
               </div>
             </div>
 
-            {/* Video with fallback */}
+            {/* Video with fallback — key prevents remount on timer tick */}
             <div className="mb-6 border-2 border-black bg-neutral-100 overflow-hidden flex items-center justify-center">
-              <StretchVideo videoUrl={currentStretch.videoUrl} fallbackEmoji={currentStretch.fallbackEmoji} />
+              <StretchVideo key={currentStretch.id} videoUrl={currentStretch.videoUrl} fallbackEmoji={currentStretch.fallbackEmoji} />
             </div>
 
             <div className="border-2 border-black p-5 mb-6 bg-[#FFF8F0]">
