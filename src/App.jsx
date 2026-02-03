@@ -17,7 +17,7 @@ const STRETCHES = [
   { id: 12, name: "Eye 20-20-20", area: "eyes", description: "Look at something 20 feet away for 20 seconds. Blink slowly 10 times. Repeat with a different focal point.", duration: 25, fallbackEmoji: "👁️", videoUrl: "" },
 ];
 
-/// ─── BREATHING EXERCISES ─────────────────────────────────────────────────────
+// ─── BREATHING EXERCISES ─────────────────────────────────────────────────────
 const BREATHING_EXERCISES = [
   {
     id: 'b1', name: "Box Breathing", pattern: [4, 4, 4, 4], labels: ["Inhale", "Hold", "Exhale", "Hold"],
@@ -196,6 +196,10 @@ export default function App() {
   const [hydrationEnabled, setHydrationEnabled] = useState(true);
   const [hydrationCount, setHydrationCount] = useState(0);
   const [hydrationGoal, setHydrationGoal] = useState(8);
+  
+  const [notificationPermission, setNotificationPermission] = useState(
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'denied'
+  );
 
   const timerRef = useRef(null);
   const audioRef = useRef(null);
@@ -339,15 +343,60 @@ export default function App() {
   };
 
   // ─── ACTIONS ────────────────────────────────────────────────────────────
+  
+  // Request notification permission
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      return permission;
+    }
+    return 'denied';
+  };
+
+  // Show browser notification (system sound plays automatically)
+  // When user clicks it, they return to tab and our sound + UI plays
+  const showBrowserNotification = (stretch) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      const notification = new Notification('🧘 Time to Stretch!', {
+        body: `${stretch.name} - ${stretch.duration}s\nClick to open StretchCheck`,
+        icon: '/icon-192.png',
+        tag: 'stretch-reminder',
+        requireInteraction: true,
+      });
+      
+      // When user clicks notification, focus tab and play our sound
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+        // Play our app sound now that user is back on the tab
+        playSound();
+      };
+    }
+  };
+  
   const triggerReminder = () => {
     const pick = STRETCHES[Math.floor(Math.random() * STRETCHES.length)];
     setCurrentStretch(pick);
     setMode('reminder');
-    playSound();
+    
+    // If tab is visible, play sound immediately
+    // If tab is hidden, show notification (sound plays when they click it)
+    if (document.visibilityState === 'visible') {
+      playSound();
+    } else {
+      showBrowserNotification(pick);
+    }
+    
     trackEvent('reminder_triggered', { stretch: pick.name });
   };
 
-  const startApp = () => {
+  const startApp = async () => {
+    // Request notification permission when starting
+    if (notificationPermission !== 'granted') {
+      await requestNotificationPermission();
+    }
+    
     const now = Date.now();
     setEndTime(now + intervalMinutes * 60 * 1000);
     setTimeLeft(intervalMinutes * 60);
@@ -493,22 +542,6 @@ export default function App() {
         </div>
 
         <div className="p-8 sm:p-10 space-y-8">
-          {/* Streak */}
-          {streak > 0 && (
-            <div className="border-2 border-black bg-[#FFF8F0] p-5 flex items-center justify-between fade-up">
-              <div className="flex items-center gap-4">
-                <div className="text-3xl">🔥</div>
-                <div>
-                  <div style={{ ...mono(10), color: '#CC0000' }}>Current Streak</div>
-                  <div className="text-2xl font-bold" style={serif}>{streak} {streak === 1 ? 'Day' : 'Days'}</div>
-                </div>
-              </div>
-              <button onClick={handleShare} className="border-2 border-black p-3 hover:bg-black hover:text-white transition-all">
-                <Share2 className="w-5 h-5" strokeWidth={1.5} />
-              </button>
-            </div>
-          )}
-
           {/* Interval */}
           <div className="fade-up fade-up-d1">
             <label className="block mb-1" style={mono(10)}>Reminder Interval</label>
@@ -548,6 +581,37 @@ export default function App() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Notifications */}
+          <div className="border-2 border-black p-5 fade-up fade-up-d2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span style={{ fontSize: 20 }}>🔔</span>
+                <div>
+                  <div className="font-bold text-sm">Browser Notifications</div>
+                  <div style={{ ...mono(10), color: notificationPermission === 'granted' ? '#22c55e' : notificationPermission === 'denied' ? '#CC0000' : '#999' }}>
+                    {notificationPermission === 'granted' ? '✓ Enabled — alerts work in background tabs' 
+                      : notificationPermission === 'denied' ? '✗ Blocked — check browser settings to enable'
+                      : 'Required for background reminders'}
+                  </div>
+                </div>
+              </div>
+              {notificationPermission !== 'granted' && notificationPermission !== 'denied' && (
+                <button 
+                  onClick={requestNotificationPermission}
+                  style={{ 
+                    border: '2px solid #000', padding: '8px 16px', fontWeight: 'bold', cursor: 'pointer',
+                    fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
+                    backgroundColor: '#000', color: '#fff', transition: 'all 0.2s'
+                  }}>
+                  Enable
+                </button>
+              )}
+              {notificationPermission === 'granted' && (
+                <div style={{ color: '#22c55e', fontSize: 24 }}>✓</div>
+              )}
+            </div>
           </div>
 
           {/* Buttons */}
@@ -610,13 +674,14 @@ export default function App() {
               </div>
             ))}
           </div>
-          <div className="mt-6 border-2 border-black bg-[#FFF8F0] p-8 text-center">
+          <div className="mt-6 border-2 border-black bg-[#FFF8F0] p-8 text-center relative">
             <div style={{ ...mono(10, { letterSpacing: '0.3em' }), color: '#CC0000', marginBottom: 8 }}>Editor's Note</div>
             <h3 className="text-xl font-bold mb-3" style={serif}>Motion is Medicine</h3>
             <p className="text-sm leading-relaxed text-neutral-600 max-w-xl mx-auto">
               In an era where knowledge work chains us to our desks, the simple act of standing and stretching becomes revolutionary. StretchCheck isn't just an app — it's a movement against the sedentary crisis plaguing modern workers.
             </p>
             <div className="text-neutral-300 mt-4">★ ★ ★</div>
+            <div style={{ position: 'absolute', bottom: 8, right: 12, fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#ccc', letterSpacing: '0.05em' }}>by Shayan Jamali</div>
           </div>
         </div>
 
