@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Check, X, Settings, Play, Pause, TrendingUp, ChevronLeft, Volume2, VolumeX, Bell, Sparkles, Share2, BarChart3, ArrowRight, RotateCcw, Zap, Droplets, Plus, Minus } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 
 // ─── STRETCH LIBRARY ─────────────────────────────────────────────────────────
 const STRETCHES = [
@@ -523,6 +524,7 @@ export default function App() {
           <div className="w-full max-w-2xl">{children}</div>
         </div>
       </div>
+      <Analytics />
     </>
   );
 
