@@ -17,7 +17,7 @@ const STRETCHES = [
   { id: 12, name: "Eye 20-20-20", area: "eyes", description: "Look at something 20 feet away for 20 seconds. Blink slowly 10 times. Repeat with a different focal point.", duration: 25, fallbackEmoji: "👁️", videoUrl: "" },
 ];
 
-// ─── BREATHING EXERCISES ─────────────────────────────────────────────────────
+/// ─── BREATHING EXERCISES ─────────────────────────────────────────────────────
 const BREATHING_EXERCISES = [
   {
     id: 'b1', name: "Box Breathing", pattern: [4, 4, 4, 4], labels: ["Inhale", "Hold", "Exhale", "Hold"],
@@ -174,7 +174,8 @@ export default function App() {
   const [mode, setMode] = useState('setup');
   const [intervalMinutes, setIntervalMinutes] = useState(45);
   const [isRunning, setIsRunning] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [endTime, setEndTime] = useState(null); // timestamp when timer should fire
+  const [timeLeft, setTimeLeft] = useState(0); // display only, calculated from endTime
   const [currentStretch, setCurrentStretch] = useState(null);
 
   const [soundVolume, setSoundVolume] = useState(0.5);
@@ -247,18 +248,29 @@ export default function App() {
 
   useEffect(() => { savePrefs(); }, [savePrefs]);
 
-  // ─── MAIN TIMER ─────────────────────────────────────────────────────────
+  // ─── MAIN TIMER (uses real clock time, works in background tabs) ──────────
   useEffect(() => {
-    if (isRunning && mode === 'running') {
-      timerRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) { triggerReminder(); return intervalMinutes * 60; }
-          return prev - 1;
-        });
-      }, 1000);
-    } else { if (timerRef.current) clearInterval(timerRef.current); }
+    if (isRunning && mode === 'running' && endTime) {
+      const tick = () => {
+        const now = Date.now();
+        const remaining = Math.max(0, Math.round((endTime - now) / 1000));
+        setTimeLeft(remaining);
+        
+        if (remaining <= 0) {
+          // Time's up - trigger reminder and reset timer
+          triggerReminder();
+          setEndTime(Date.now() + intervalMinutes * 60 * 1000);
+        }
+      };
+      
+      // Run immediately to sync, then every second for display
+      tick();
+      timerRef.current = setInterval(tick, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [isRunning, mode, intervalMinutes]);
+  }, [isRunning, mode, endTime, intervalMinutes]);
 
   // ─── BREATHING TIMER ────────────────────────────────────────────────────
   useEffect(() => {
@@ -336,6 +348,8 @@ export default function App() {
   };
 
   const startApp = () => {
+    const now = Date.now();
+    setEndTime(now + intervalMinutes * 60 * 1000);
     setTimeLeft(intervalMinutes * 60);
     setIsRunning(true);
     setMode('running');
