@@ -6,7 +6,6 @@ const STRETCHES = [
   { id: 1, name: "Overhead Reach", area: "upper", description: "Stand up, reach both arms overhead, interlace fingers, and stretch upward", duration: 15, fallbackEmoji: "🙆", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Arm_stretch/Arm+stretch.mp4" },
   { id: 2, name: "Shoulder Rolls", area: "upper", description: "Stand up, roll shoulders backward 5 times, then forward 5 times", duration: 15, fallbackEmoji: "💪", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Shoulder_shrugs/video_media_01KG8B226QGMN86GP43EKEJMNH.mp4" },
   { id: 3, name: "Torso Twist", area: "core", description: "Stand with feet shoulder-width apart, twist torso left and right alternating", duration: 15, fallbackEmoji: "🔄", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Torso_twist/Torso+twist.mp4" },
-  { id: 4, name: "Arm Circles", area: "upper", description: "Stand up, extend arms to sides, make small circles forward then backward", duration: 20, fallbackEmoji: "⭕", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/video_media_01KG8B226QGMN86GP43EKEJMNH.mp4" },
   { id: 5, name: "Side Bend", area: "core", description: "Stand tall, reach right arm overhead and bend left, then switch sides", duration: 15, fallbackEmoji: "🤸", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/Side_bend/side+bend.mp4" },
   { id: 6, name: "Neck Rolls", area: "upper", description: "Gently roll head in a circle, 3 times each direction", duration: 15, fallbackEmoji: "🧘", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/neck_rolls/Animate_this_manequin_202601312324_s2zxr.mp4" },
   { id: 7, name: "Chest Opener", area: "upper", description: "Clasp hands behind your back. Squeeze shoulder blades together, lift hands slightly, and open your chest. Hold 15 seconds.", duration: 20, fallbackEmoji: "🫁", videoUrl: "https://fitness-app-365.s3.eu-west-1.amazonaws.com/new-stretches/Chest_Opener_Stretch_Video_Generation.mp4" },
@@ -176,6 +175,7 @@ export default function App() {
   const [isRunning, setIsRunning] = useState(false);
   const [endTime, setEndTime] = useState(null); // timestamp when timer should fire
   const [timeLeft, setTimeLeft] = useState(0); // display only, calculated from endTime
+  const [pausedTimeLeft, setPausedTimeLeft] = useState(null); // stores remaining seconds when paused
   const [currentStretch, setCurrentStretch] = useState(null);
 
   const [soundVolume, setSoundVolume] = useState(0.5);
@@ -400,9 +400,25 @@ export default function App() {
     const now = Date.now();
     setEndTime(now + intervalMinutes * 60 * 1000);
     setTimeLeft(intervalMinutes * 60);
+    setPausedTimeLeft(null);
     setIsRunning(true);
     setMode('running');
     trackEvent('session_started', { interval: intervalMinutes });
+  };
+
+  const togglePause = () => {
+    if (isRunning) {
+      // Pausing: save the current remaining time
+      const remaining = Math.max(0, Math.round((endTime - Date.now()) / 1000));
+      setPausedTimeLeft(remaining);
+      setIsRunning(false);
+    } else {
+      // Resuming: set new endTime based on saved remaining time
+      const remaining = pausedTimeLeft !== null ? pausedTimeLeft : timeLeft;
+      setEndTime(Date.now() + remaining * 1000);
+      setPausedTimeLeft(null);
+      setIsRunning(true);
+    }
   };
 
   const skipStretch = () => { setMode('running'); setCurrentStretch(null); trackEvent('stretch_skipped'); };
@@ -541,6 +557,14 @@ export default function App() {
           <p style={{ ...mono(11, { letterSpacing: '0.2em' }), color: '#999' }}>Your Desktop Wellness Companion</p>
         </div>
 
+        {/* Intro */}
+        <div className="p-6 sm:p-8 border-b-2 border-black">
+          <div style={{ ...mono(10, { letterSpacing: '0.3em' }), color: '#CC0000', marginBottom: 8 }}>How It Works</div>
+          <p className="text-sm text-neutral-600 leading-relaxed" style={{ maxWidth: 540 }}>
+            Select your preferred reminder interval below. Keep this tab open in the background while you work. When it's time to move, you'll receive an alert with a guided stretch to follow. No signup required.
+          </p>
+        </div>
+
         <div className="p-8 sm:p-10 space-y-8">
           {/* Interval */}
           <div className="fade-up fade-up-d1">
@@ -611,6 +635,11 @@ export default function App() {
               {notificationPermission === 'granted' && (
                 <div style={{ color: '#22c55e', fontSize: 24 }}>✓</div>
               )}
+            </div>
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #eee', fontSize: 11, color: '#999', lineHeight: 1.5 }}>
+              💡 <strong>Not getting notifications?</strong> Check your system settings:<br/>
+              <span style={{ color: '#bbb' }}>Mac: System Settings → Notifications → Your Browser → Allow</span><br/>
+              <span style={{ color: '#bbb' }}>Windows: Settings → System → Notifications → Your Browser → On</span>
             </div>
           </div>
 
@@ -901,13 +930,13 @@ export default function App() {
             )}
 
             <div className="space-y-3">
-              <button onClick={() => setIsRunning(!isRunning)}
+              <button onClick={togglePause}
                 className={`w-full py-4 font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2
                   ${isRunning ? 'bg-[#CC0000] text-white border-2 border-[#CC0000] hover:bg-[#990000]' : 'bg-black text-white border-2 border-black hover:bg-white hover:text-black'}`}>
                 {isRunning ? <><Pause className="w-5 h-5" strokeWidth={2} />Pause</> : <><Play className="w-5 h-5" strokeWidth={2} />Resume</>}
               </button>
               <div className="grid grid-cols-3 gap-3">
-                <Btn onClick={() => setMode('setup')} small icon={Settings}>Setup</Btn>
+                <Btn onClick={() => setMode('setup')} small icon={ChevronLeft}>Home</Btn>
                 <Btn onClick={() => setMode('stats')} small icon={BarChart3}>Stats</Btn>
                 <Btn onClick={() => triggerReminder()} small icon={Zap}>Now</Btn>
               </div>
@@ -1051,3 +1080,4 @@ export default function App() {
 
   return null;
 }
+
