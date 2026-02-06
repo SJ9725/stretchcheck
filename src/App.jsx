@@ -380,6 +380,9 @@ export default function App() {
     setCurrentStretch(pick);
     setMode('reminder');
     
+    // Stop the timer while user is doing the stretch
+    setIsRunning(false);
+    
     // If tab is visible, play sound immediately
     // If tab is hidden, show notification (sound plays when they click it)
     if (document.visibilityState === 'visible') {
@@ -421,7 +424,21 @@ export default function App() {
     }
   };
 
-  const skipStretch = () => { setMode('running'); setCurrentStretch(null); trackEvent('stretch_skipped'); };
+  // Restart timer fresh after completing or skipping a stretch
+  const resumeTimer = () => {
+    const now = Date.now();
+    setEndTime(now + intervalMinutes * 60 * 1000);
+    setTimeLeft(intervalMinutes * 60);
+    setPausedTimeLeft(null);
+    setIsRunning(true);
+  };
+
+  const skipStretch = () => { 
+    setMode('running'); 
+    setCurrentStretch(null); 
+    resumeTimer();
+    trackEvent('stretch_skipped'); 
+  };
 
   const completeStretch = () => {
     const nc = stretchCount + 1;
@@ -435,7 +452,9 @@ export default function App() {
     setStretchCount(nc); setTotalSeconds(ns); setWeeklyData(nw);
     setStreak(nStreak); setBestStreak(nBest); setSessionHistory(nh);
     saveStats({ stretchCount: nc, totalSeconds: ns, weeklyData: nw, streak: nStreak, bestStreak: nBest, sessionHistory: nh });
-    setMode('running'); setCurrentStretch(null); setStretchTimerActive(false);
+    setMode('running'); 
+    setCurrentStretch(null);
+    resumeTimer();
     trackEvent('stretch_completed', { stretch: currentStretch?.name });
   };
 
@@ -1080,4 +1099,5 @@ export default function App() {
 
   return null;
 }
+
 
