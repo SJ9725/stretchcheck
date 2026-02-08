@@ -729,7 +729,7 @@ export default function App() {
               Somewhere between meetings and deadlines, movement gets forgotten. StretchCheck is a gentle reminder that your body still exists.
             </p>
             <div className="text-neutral-300 mt-4">★ ★ ★</div>
-            <div style={{ position: 'absolute', bottom: 8, right: 12, fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#cccccc00', letterSpacing: '0.05em' }}>by Shayan Jamali</div>
+            <div style={{ position: 'absolute', bottom: 8, right: 12, fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#000000c7', letterSpacing: '0.05em' }}>by Shayan Jamali</div>
           </div>
         </div>
 
