@@ -726,10 +726,10 @@ export default function App() {
             <div style={{ ...mono(10, { letterSpacing: '0.3em' }), color: '#CC0000', marginBottom: 8 }}>Editor's Note</div>
             <h3 className="text-xl font-bold mb-3" style={serif}>Motion is Medicine</h3>
             <p className="text-sm leading-relaxed text-neutral-600 max-w-xl mx-auto">
-              In an era where knowledge work chains us to our desks, the simple act of standing and stretching becomes revolutionary. StretchCheck isn't just an app — it's a movement against the sedentary crisis plaguing modern workers.
+              Somewhere between meetings and deadlines, movement gets forgotten. StretchCheck is a gentle reminder that your body still exists.
             </p>
             <div className="text-neutral-300 mt-4">★ ★ ★</div>
-            <div style={{ position: 'absolute', bottom: 8, right: 12, fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#ccc', letterSpacing: '0.05em' }}>by Shayan Jamali</div>
+            <div style={{ position: 'absolute', bottom: 8, right: 12, fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#cccccc00', letterSpacing: '0.05em' }}>by Shayan Jamali</div>
           </div>
         </div>
 
